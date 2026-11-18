@@ -20,6 +20,8 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install
+      - name: Dependency audit (informational)
+        run: npm audit --json || true
       - name: Unit tests
         run: npm test
       - name: Production build

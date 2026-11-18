@@ -1,0 +1,81 @@
+/* brisa. | Design tokens: single source of truth */
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
+  color-scheme: light;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --page: #f7f8f6;
+  --surface: #ffffff;
+  --surface-soft: #f4f7f4;
+  --surface-raised: #ffffff;
+  --ink: #222d29;
+  --ink-strong: #192620;
+  --secondary: #67736d;
+  --tertiary: #8e9991;
+  --line: #e5eae5;
+  --stitch: #dfe8df;
+  --accent: #356d5c;
+  --accent-dark: #245747;
+  --accent-soft: #e9f3ed;
+  --accent-contrast: #ffffff;
+  --amber: #8d622e;
+  --amber-soft: #fff4e6;
+  --lavender: #715d92;
+  --lavender-soft: #f2eef8;
+  --danger: #ae5350;
+  --danger-soft: #fff0ed;
+  --nav-background: rgba(255,255,255,.93);
+  --overlay: rgba(23,34,29,.27);
+  --shadow-card: 0 3px 15px rgba(32,59,43,.028), 0 14px 35px rgba(32,59,43,.024);
+  --shadow-nav: 0 12px 44px rgba(24,49,35,.13);
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --radius-xl: 30px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --page: #151b19;
+  --surface: #202925;
+  --surface-soft: #29332e;
+  --surface-raised: #25312b;
+  --ink: #edf3ed;
+  --ink-strong: #ffffff;
+  --secondary: #acb9ae;
+  --tertiary: #8b9c90;
+  --line: #354039;
+  --stitch: #35473c;
+  --accent: #b3d9bf;
+  --accent-dark: #d1e6d5;
+  --accent-soft: #304b3c;
+  --accent-contrast: #1c382b;
+  --amber: #e7c38c;
+  --amber-soft: #47392c;
+  --lavender: #c6b4e5;
+  --lavender-soft: #42394f;
+  --danger: #eea3a0;
+  --danger-soft: #49302f;
+  --nav-background: rgba(30,40,34,.94);
+  --overlay: rgba(0,0,0,.57);
+  --shadow-card: 0 3px 20px rgba(0,0,0,.1);
+  --shadow-nav: 0 16px 44px rgba(0,0,0,.28);
+}
+@media (prefers-reduced-motion: reduce) {
+  *,*::before,*::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+:root[data-reduce-motion='true'] *, :root[data-reduce-motion='true'] *::before, :root[data-reduce-motion='true'] *::after {
+  scroll-behavior: auto !important;
+  animation-duration: .01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: .01ms !important;
+}

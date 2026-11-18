@@ -1,0 +1,27 @@
+{
+  "name": "brisa",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Um assistente gentil para fazer o necessário e descansar em paz.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "motion": "^12.23.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^4.5.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.2.0",
+    "vitest": "^3.2.0"
+  }
+}

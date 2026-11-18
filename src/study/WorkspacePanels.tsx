@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { ArrowUpRight, BookOpen, ListTodo, Search } from 'lucide-react';
 import { EntryFields, freshInput } from '../components/EntryFields';
 import { Button } from '../components/ui';
+import { noteText } from '../lib/documents';
 import { useApp } from '../state/AppState';
 import { SUBJECT_COLORS, uid, type Subject, type EntryInput } from '../types';
 
@@ -53,7 +54,7 @@ export function WorkspaceSearch({ subject, note, entry }: {
     ...data.entries.map((item) => ({ id: 't-' + item.id, title: item.title, type: item.kind === 'task' ? 'Tarefa' : 'Registro',
       content: item.title + ' ' + item.note + ' ' + item.steps.map((step) => step.title).join(' '), Icon: ListTodo, open: () => entry(item.id) })),
     ...data.notes.map((item) => ({ id: 'n-' + item.id, title: item.title || 'Sem título', type: 'Página',
-      content: item.title + ' ' + item.blocks.map((block) => block.text + ' ' + (block.url || '')).join(' '), Icon: BookOpen,
+      content: item.title + ' ' + noteText(item), Icon: BookOpen,
       open: () => note(item.subjectId, item.id) })),
   ].filter((item) => normalize(item.content).includes(term)).slice(0, 40) : [];
   return <div className="nw-stack">

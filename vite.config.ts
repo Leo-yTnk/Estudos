@@ -56,9 +56,10 @@ self.addEventListener('fetch', event => {
   };
 }
 
-export default defineConfig(({ command, isPreview }) => ({
+export default defineConfig({
   plugins: [react(), offlineWorkspace()],
-  base: command === 'serve' && !isPreview ? '/' : '/Estudos/',
+  // Hash routes keep navigation at the site root, so assets can follow the deployed directory.
+  base: './',
   build: {
     outDir: 'dist',
     rolldownOptions: {
@@ -67,4 +68,4 @@ export default defineConfig(({ command, isPreview }) => ({
       },
     },
   },
-}));
+});

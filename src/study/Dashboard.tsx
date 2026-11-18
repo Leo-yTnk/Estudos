@@ -1,16 +1,12 @@
-import { ArrowDownRight, ArrowRight, ArrowUpRight, BookOpen, CalendarDays, CheckCircle2, Clock3, LayoutGrid, ListTodo, Plus, Timer } from 'lucide-react';
+import { ArrowRight, CalendarDays, CheckCircle2, Clock3, LayoutGrid, ListTodo, Timer } from 'lucide-react';
 import { Button, Surface } from '../components/ui';
 import { asLocalDate, dueLabel, rankedTasks, weekActivity } from '../lib/engine';
 import { useApp } from '../state/AppState';
-import type { Subject } from '../types';
+import { SubjectCard } from './Subjects';
 import { Week } from './Planner';
 
-export function SubjectMark({ subject }: { subject: Subject }) {
-  return <span className={'nw-subject-mark tone-' + subject.color}><BookOpen size={17} strokeWidth={1.8} /></span>;
-}
-
-export function Dashboard({ subject, newSubject, tasks, focus, add, openTask }: {
-  subject: (id: string) => void; newSubject: () => void; tasks: () => void; focus: () => void;
+export function Dashboard({ subject, subjects, newSubject, focus, add, openTask }: {
+  subject: (id: string) => void; subjects: () => void; newSubject: () => void; focus: () => void;
   add: (due?: string | null) => void; openTask: (id: string) => void;
 }) {
   const { data } = useApp();
@@ -40,9 +36,13 @@ export function Dashboard({ subject, newSubject, tasks, focus, add, openTask }: 
       <Surface className="nw-focus-card">
         <div className="nw-focus-content">
           <span className="nw-focus-label"><Timer size={16} /> Foco</span>
-          <h2>{data.focus ? 'Sessão em andamento' : data.break ? 'Pausa em andamento' : 'Uma tarefa de cada vez'}</h2>
-          <p>{data.focus ? data.entries.find(({ id }) => id === data.focus?.entryId)?.title : data.break ? 'Seu intervalo de ' + data.break.minutes + ' minutos está ativo.' : 'Escolha uma tarefa, acompanhe o tempo e faça uma pausa quando precisar.'}</p>
-          <Button icon={<ArrowRight size={16} />} onClick={focus}>{data.focus || data.break ? 'Ver sessão' : 'Abrir modo foco'}</Button>
+          <h2>{data.focus ? 'Sessão em andamento' : data.break ? 'Pausa em andamento' : next ? 'Sua próxima tarefa' : 'Uma tarefa de cada vez'}</h2>
+          <p>{data.focus ? data.entries.find(({ id }) => id === data.focus?.entryId)?.title : data.break ? 'Seu intervalo de ' + data.break.minutes + ' minutos está ativo.' : next ? next.title + ' · ' + dueLabel(next.dueAt) + ' · ' + next.minutes + ' min' : 'Adicione um exercício ou uma entrega para começar a organizar seus estudos.'}</p>
+          <div className="ds-toolbar">
+            <Button icon={<ArrowRight size={16} />} onClick={data.focus || data.break ? focus : next ? () => openTask(next.id) : () => add()}>
+              {data.focus || data.break ? 'Ver sessão' : next ? 'Abrir tarefa' : 'Criar tarefa'}
+            </Button>
+          </div>
         </div>
         <div className="nw-focus-rings" aria-hidden="true"><span /><span /><span /><Timer size={38} strokeWidth={1.15} /></div>
       </Surface>
@@ -50,21 +50,11 @@ export function Dashboard({ subject, newSubject, tasks, focus, add, openTask }: 
     </div>
     <section className="nw-stack">
       <div className="nw-section-heading"><h2><LayoutGrid size={19} /> Minhas matérias</h2>
-        <Button size="sm" variant="ghost" icon={<Plus size={16} />} onClick={newSubject}>Nova matéria</Button></div>
-      <div className="nw-subject-grid">{data.subjects.map((item) => {
-        const count = pending.filter((entry) => entry.subjectId === item.id).length;
-        const notes = data.notes.filter((note) => note.subjectId === item.id).length;
-        return <Surface key={item.id} layout className="nw-subject-card"><button type="button" onClick={() => subject(item.id)}>
-          <span className="nw-subject-card-top"><SubjectMark subject={item} /><ArrowUpRight size={16} /></span>
-          <strong>{item.title}</strong><small>{count} {count === 1 ? 'tarefa' : 'tarefas'} · {notes} {notes === 1 ? 'página' : 'páginas'}</small>
-        </button></Surface>;
-      })}</div>
+        <Button size="sm" variant="ghost" icon={<ArrowRight size={16} />} onClick={subjects}>Ver todas</Button></div>
+      {data.subjects.length ? <div className="subject-grid dashboard-subjects">{data.subjects.slice(0, 4).map((item) =>
+        <SubjectCard key={item.id} subject={item} open={() => subject(item.id)} />)}</div> :
+        <Button onClick={newSubject}>Criar primeira matéria</Button>}
     </section>
-    <section className="nw-stack">
-      <div className="nw-section-heading"><h2><ArrowDownRight size={19} /> Próxima tarefa</h2><Button variant="ghost" size="sm" onClick={tasks}>Ver tarefas</Button></div>
-      <Surface className="nw-next">{next ? <><div><strong>{next.title}</strong><span className="nw-muted">{dueLabel(next.dueAt)} · {next.minutes} min</span></div>
-        <Button size="sm" onClick={() => openTask(next.id)}>Abrir tarefa</Button></> : <><div><strong>Nenhuma tarefa pendente</strong><span className="nw-muted">Adicione uma entrega ou exercício para começar.</span></div>
-        <Button size="sm" onClick={() => add()}>Criar tarefa</Button></>}</Surface>
-    </section>
+
   </div>;
 }

@@ -11,7 +11,16 @@ export interface Step {
   awarded: boolean;
 }
 
+export const SUBJECT_COLORS = ['mint', 'violet', 'blue', 'peach', 'rose'] as const;
+export type SubjectColor = typeof SUBJECT_COLORS[number];
+export interface Subject { id: string; title: string; color: SubjectColor }
+export const BLOCK_TYPES = ['text', 'heading', 'check', 'link'] as const;
+export interface NoteBlock { id: string; type: typeof BLOCK_TYPES[number]; text: string; checked?: boolean; url?: string }
+export interface StudyNote { id: string; subjectId: string; title: string; blocks: NoteBlock[]; updatedAt: string }
+export interface Flashcard { id: string; subjectId: string; front: string; back: string; due: string; interval: number }
+
 export interface Entry {
+  subjectId?: string;
   id: string;
   title: string;
   note: string;
@@ -29,7 +38,7 @@ export interface Entry {
   completedAt: string | null;
 }
 
-export type EntryInput = Pick<Entry, 'title' | 'note' | 'kind' | 'importance' | 'effort' | 'minutes' | 'dueAt'>;
+export type EntryInput = Pick<Entry, 'title' | 'note' | 'kind' | 'importance' | 'effort' | 'minutes' | 'dueAt' | 'subjectId'>;
 
 export interface Reward {
   id: string;
@@ -58,6 +67,9 @@ export interface AppData {
     theme: Theme;
     reducedMotion: boolean;
   };
+  subjects: Subject[];
+  notes: StudyNote[];
+  flashcards: Flashcard[];
   entries: Entry[];
   rewards: Reward[];
   activity: Activity[];
@@ -69,6 +81,14 @@ export function emptyData(): AppData {
   return {
     version: 1,
     profile: { name: '', energy: 2, theme: 'system', reducedMotion: false },
+    subjects: [
+      { id: 'math', title: 'Matemática', color: 'mint' },
+      { id: 'portuguese', title: 'Português', color: 'violet' },
+      { id: 'science', title: 'Ciências', color: 'blue' },
+      { id: 'history', title: 'História', color: 'peach' },
+    ],
+    notes: [],
+    flashcards: [],
     entries: [],
     rewards: [],
     activity: [],

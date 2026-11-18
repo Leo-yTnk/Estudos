@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { Archive, CalendarDays, Check, ChevronDown, Clock3, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { Archive, CalendarDays, Check, ChevronDown, Clock3, Play, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import type { Entry, EntryInput } from '../types';
 import { KINDS } from '../types';
 import { dueLabel, dueDays } from '../lib/engine';
@@ -9,20 +9,20 @@ import { useApp } from '../state/AppState';
 import { Button, KindPill } from './ui';
 import { EntryFields } from './EntryFields';
 
-export function EntryCard({ entry }: { entry: Entry }) {
+export function EntryCard({ entry, initiallyExpanded = false }: { entry: Entry; initiallyExpanded?: boolean }) {
   const app = useApp();
   const reduceSystem = useReducedMotion();
   const reduce = !!reduceSystem || app.data.profile.reducedMotion;
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(initiallyExpanded);
   const [editing, setEditing] = useState(false);
   const [stepText, setStepText] = useState('');
   const [draft, setDraft] = useState<EntryInput>({
     title: entry.title, kind: entry.kind, note: entry.note, importance: entry.importance,
-    effort: entry.effort, minutes: entry.minutes, dueAt: entry.dueAt,
+    effort: entry.effort, minutes: entry.minutes, dueAt: entry.dueAt, subjectId: entry.subjectId,
   });
   useEffect(() => {
     if (!editing) setDraft({ title: entry.title, kind: entry.kind, note: entry.note,
-      importance: entry.importance, effort: entry.effort, minutes: entry.minutes, dueAt: entry.dueAt });
+      importance: entry.importance, effort: entry.effort, minutes: entry.minutes, dueAt: entry.dueAt, subjectId: entry.subjectId });
   }, [entry, editing]);
   const overdue = entry.status === 'active' && (dueDays(entry) ?? Infinity) < 0;
   const save = (event: FormEvent<HTMLFormElement>) => {
@@ -36,11 +36,14 @@ export function EntryCard({ entry }: { entry: Entry }) {
     app.addStep(entry.id, stepText);
     setStepText('');
   };
+  const subject = app.data.subjects.find((item) => item.id === entry.subjectId);
   const tone = entry.kind === 'worry' ? 'amber' : entry.kind === 'idea' ? 'purple' : entry.kind === 'task' ? 'teal' : 'neutral';
 
   return <motion.article layout={!reduce} transition={springs.layout} className={'entry-card ' + (expanded ? 'is-expanded ' : '') + (entry.status !== 'active' ? 'is-dimmed' : '')}>
     <button className="entry-summary" type="button" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
       <div className="entry-main"><div className="entry-tags"><KindPill tone={tone}>{KINDS[entry.kind]}</KindPill>
+        {subject && <span className={'nw-tag tone-' + subject.color}>{subject.title}</span>}
+        {entry.importance === 3 && <KindPill tone="amber">Alta prioridade</KindPill>}
         {entry.source === 'demo' && <span className="demo-pill">Exemplo</span>}
         {entry.status === 'done' && <span className="status-label"><Check size={12}/> Concluída</span>}
         {entry.status === 'archived' && <span className="status-label">Arquivada</span>}
@@ -79,6 +82,9 @@ export function EntryCard({ entry }: { entry: Entry }) {
             <div className="entry-actions">
               {entry.status === 'active' && <Button size="sm" variant="primary" icon={<Check size={15}/>} onClick={() => app.completeEntry(entry.id)}>{entry.kind === 'worry' ? 'Resolvida' : 'Concluir'}</Button>}
               {entry.status === 'active' && entry.kind === 'task' && <Button size="sm" icon={<RotateCcw size={14}/>} onClick={() => app.postponeEntry(entry.id)}>Adiar 1 dia</Button>}
+              {entry.status === 'active' && entry.kind === 'task' && !app.data.focus && !app.data.break &&
+                <Button size="sm" icon={<Play size={14}/>} onClick={() => app.startFocus(entry.id)}>Iniciar foco</Button>}
+              {entry.status === 'done' && <Button size="sm" icon={<RotateCcw size={14}/>} onClick={() => app.reopenEntry(entry.id)}>Reabrir</Button>}
               <Button size="sm" variant="ghost" icon={<Pencil size={15}/>} onClick={() => setEditing(true)}>Editar</Button>
               {entry.status !== 'archived' ? <Button size="sm" variant="ghost" icon={<Archive size={15}/>} onClick={() => app.archiveEntry(entry.id)}>Arquivar</Button> : <Button size="sm" variant="ghost" icon={<RotateCcw size={15}/>} onClick={() => app.restoreEntry(entry.id)}>Restaurar</Button>}
               <Button size="sm" variant="danger" icon={<Trash2 size={15}/>} onClick={() => app.deleteEntry(entry.id)}>Excluir</Button>

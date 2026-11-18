@@ -1,5 +1,6 @@
 import type { EntryInput } from '../types';
 import { asLocalDate, dateToDeadline } from '../lib/engine';
+import { useApp } from '../state/AppState';
 import { KINDS } from '../types';
 
 export const freshInput = (): EntryInput => ({
@@ -11,6 +12,7 @@ export function EntryFields({ value, onChange, showKind = true }: {
   onChange: (next: EntryInput) => void;
   showKind?: boolean;
 }) {
+  const { subjects } = useApp().data;
   const change = <K extends keyof EntryInput>(field: K, next: EntryInput[K]) => onChange({ ...value, [field]: next });
   return <div className="fields">
     <label className="field-label">Título
@@ -25,6 +27,12 @@ export function EntryFields({ value, onChange, showKind = true }: {
       <textarea rows={2} maxLength={3000} value={value.note} onChange={(e) => change('note', e.target.value)} placeholder="Algum detalhe que ajude depois..." />
     </label>
     <div className="field-grid">
+      <label className="field-label">Matéria
+        <select value={value.subjectId || ''} onChange={(e) => change('subjectId', e.target.value || undefined)}>
+          <option value="">Sem matéria</option>
+          {subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.title}</option>)}
+        </select>
+      </label>
       <label className="field-label">Prazo <span className="subtle">(opcional)</span>
         <input type="date" value={asLocalDate(value.dueAt)} onChange={(e) => change('dueAt', dateToDeadline(e.target.value))} />
       </label>

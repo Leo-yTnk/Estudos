@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { emptyData, uid } from '../types';
-import type { AppData, Entry, EntryInput, Reward, Step } from '../types';
+import type { AppData, Entry, EntryInput, Reward, Step, Subject, StudyNote, Flashcard } from '../types';
 import { pointsBalance, pointsFor } from '../lib/engine';
 import { withDemo } from '../lib/demo';
 import { loadData, saveData } from '../lib/storage';
@@ -12,10 +12,17 @@ interface AppContextValue {
   toast: ToastState | null;
   dismissToast: () => void;
   notify: (message: string) => void;
+  saveSubject: (subject: Subject) => void;
+  removeSubject: (id: string) => void;
+  saveNote: (note: StudyNote) => void;
+  removeNote: (id: string) => void;
+  saveFlashcard: (card: Flashcard) => void;
+  removeFlashcard: (id: string) => void;
   updateProfile: (patch: Partial<AppData['profile']>) => void;
   addEntry: (entry: EntryInput) => void;
   editEntry: (id: string, patch: EntryInput) => void;
   completeEntry: (id: string) => void;
+  reopenEntry: (id: string) => void;
   postponeEntry: (id: string) => void;
   archiveEntry: (id: string) => void;
   restoreEntry: (id: string) => void;
@@ -86,6 +93,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => query.removeEventListener('change', update);
   }, [data.profile.theme, data.profile.reducedMotion]);
 
+  const upsert = <T extends { id: string },>(items: T[], item: T) => items.some(({ id }) => id === item.id)
+    ? items.map((current) => current.id === item.id ? item : current) : [item, ...items];
+  const saveSubject = (subject: Subject) => setData((d) => ({ ...d, subjects: upsert(d.subjects, subject) }));
+  const removeSubject = (id: string) => setData((d) => ({
+    ...d, subjects: d.subjects.filter((item) => item.id !== id),
+    entries: d.entries.map((entry) => entry.subjectId === id ? { ...entry, subjectId: undefined } : entry),
+    notes: d.notes.filter((note) => note.subjectId !== id),
+    flashcards: d.flashcards.filter((card) => card.subjectId !== id),
+  }));
+  const saveNote = (note: StudyNote) => setData((d) => ({ ...d, notes: upsert(d.notes, { ...note, updatedAt: stamped() }) }));
+  const removeNote = (id: string) => setData((d) => ({ ...d, notes: d.notes.filter((note) => note.id !== id) }));
+  const saveFlashcard = (card: Flashcard) => setData((d) => ({ ...d, flashcards: upsert(d.flashcards, card) }));
+  const removeFlashcard = (id: string) => setData((d) => ({ ...d, flashcards: d.flashcards.filter((card) => card.id !== id) }));
+
   const updateProfile = (patch: Partial<AppData['profile']>) => setData((d) => ({ ...d, profile: { ...d.profile, ...patch } }));
   const addEntry = (input: EntryInput) => {
     const now = stamped();
@@ -104,7 +125,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setData((d) => {
       const entry = d.entries.find((e) => e.id === id);
       if (!entry || entry.status !== 'active') return d;
-      const points = entry.kind === 'task' ? pointsFor(entry) : 0;
+      const points = entry.kind === 'task' && !d.activity.some((item) => item.kind === 'complete' && item.entryId === id) ? pointsFor(entry) : 0;
       const focus = d.focus?.entryId === id ? focusEvent(d.focus) : null;
       return {
         ...d,
@@ -118,6 +139,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
     notify('Concluído. Um passo a menos na cabeça.');
   };
+  const reopenEntry = (id: string) => setData((d) => ({ ...d, entries: d.entries.map((entry) =>
+    entry.id === id && entry.status === 'done' ? { ...entry, status: 'active', completedAt: null, updatedAt: stamped() } : entry) }));
   const postponeEntry = (id: string) => {
     setData((d) => ({ ...d, entries: d.entries.map((entry) => {
       if (entry.id !== id || entry.status !== 'active') return entry;
@@ -129,7 +152,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     notify('Adiada em um dia. Sem culpa.');
   };
   const archiveEntry = (id: string) => {
-    setData((d) => ({ ...d, entries: d.entries.map((e) => e.id === id ? { ...e, status: 'archived', updatedAt: stamped() } : e) }));
+    setData((d) => {
+      const activeFocus = d.focus?.entryId === id;
+      const focus = activeFocus ? focusEvent(d.focus) : null;
+      return { ...d, entries: d.entries.map((e) => e.id === id ? { ...e, status: 'archived', updatedAt: stamped() } : e),
+        focus: activeFocus ? null : d.focus, activity: focus ? [focus, ...d.activity] : d.activity };
+    });
     notify('Registro arquivado.');
   };
   const restoreEntry = (id: string) => {
@@ -188,8 +216,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
   const startFocus = (id: string) => {
-    if (data.focus) { notify('Encerre o foco atual antes de começar outro.'); return; }
-    setData((d) => ({ ...d, focus: { entryId: id, startedAt: stamped() } }));
+    if (data.focus || data.break) { notify('Encerre a sessão atual antes de começar outra.'); return; }
+    setData((d) => d.focus || d.break || !d.entries.some((entry) => entry.id === id && entry.status === 'active' && entry.kind === 'task')
+      ? d : { ...d, focus: { entryId: id, startedAt: stamped() } });
     notify('Foco iniciado. Uma coisa por vez.');
   };
   const finishFocus = () => {
@@ -219,6 +248,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
     notify('Pausa encerrada. Bem-vindo de volta.');
   };
+  useEffect(() => {
+    if (!data.break) return;
+    const elapsed = Date.now() - Date.parse(data.break.startedAt);
+    const timer = window.setTimeout(finishBreak, Math.max(0, data.break.minutes * 60000 - elapsed));
+    return () => window.clearTimeout(timer);
+  }, [data.break]);
   const addReward = (title: string, cost: number) => {
     const clean = title.trim().slice(0, 120);
     if (!clean || !Number.isFinite(cost) || cost < 1) return;
@@ -245,8 +280,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const restore = (next: AppData) => { setData(next); notify('Backup importado com sucesso.'); };
   const clearAll = () => { setData(emptyData()); deletedRef.current = null; notify('Dados locais reiniciados.'); };
 
-  return <Context.Provider value={{ data, ready, toast, dismissToast, notify, updateProfile, addEntry, editEntry,
-    completeEntry, postponeEntry, archiveEntry, restoreEntry, deleteEntry, undoDelete, divideEntry, addStep, toggleStep,
+  return <Context.Provider value={{ data, ready, toast, dismissToast, notify, saveSubject, removeSubject, saveNote, removeNote, saveFlashcard, removeFlashcard, updateProfile, addEntry, editEntry,
+    completeEntry, reopenEntry, postponeEntry, archiveEntry, restoreEntry, deleteEntry, undoDelete, divideEntry, addStep, toggleStep,
     startFocus, finishFocus, startBreak, finishBreak, addReward, deleteReward, redeemReward, addDemo,
     removeDemo, restore, clearAll }}>
     {children}

@@ -13,6 +13,8 @@ export function ElasticSheet({ title, children, onClose }: { title: string; chil
   const height = useMotionValue(0);
   const drag = useRef<Drag | null>(null);
   const closing = useRef(false);
+  const panel = useRef<HTMLElement>(null);
+  const trigger = useRef<HTMLElement | null>(null);
   const getLimits = () => {
     const max = Math.max(220, window.innerHeight - 96);
     return { min: Math.min(max, Math.max(310, Math.min(530, window.innerHeight * 0.68))), max };
@@ -30,17 +32,34 @@ export function ElasticSheet({ title, children, onClose }: { title: string; chil
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    trigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const target = panel.current?.querySelector<HTMLElement>('.sheet-scroll input:not([type="file"]), .sheet-scroll textarea');
+    (target || panel.current)?.focus({ preventScroll: true });
     to(getLimits().min);
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') close(); };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !event.defaultPrevented) close();
+      if (event.key !== 'Tab') return;
+      const controls = Array.from(panel.current?.querySelectorAll<HTMLElement>(
+        'button:not(:disabled), input:not(:disabled):not([type="file"]), select:not(:disabled), textarea:not(:disabled), a[href]',
+      ) || []).filter((item) => item.getClientRects().length > 0);
+      const first = controls[0];
+      const last = controls.at(-1);
+      if ((event.shiftKey && (document.activeElement === first || document.activeElement === panel.current)) ||
+        (!event.shiftKey && document.activeElement === last)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first)?.focus();
+      }
+    };
     window.addEventListener('keydown', onKey);
     return () => {
       height.stop();
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', onKey);
+      trigger.current?.focus({ preventScroll: true });
     };
   }, []);
   const pointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (closing.current) return;
+    closing.current = false;
     height.stop();
     drag.current = { id: event.pointerId, y: event.clientY, height: height.get(),
       lastY: event.clientY, lastTime: performance.now(), velocity: 0, moved: false };
@@ -74,7 +93,7 @@ export function ElasticSheet({ title, children, onClose }: { title: string; chil
     <motion.div className="sheet-backdrop" initial={{opacity:0}} animate={{opacity:1}} onClick={close}
       transition={{duration:reduce ? 0 : 0.18}} aria-hidden="true"/>
     <motion.section className="elastic-sheet" role="dialog" aria-modal="true" aria-label={title}
-      style={{height}}>
+      ref={panel} tabIndex={-1} style={{height}}>
       <div className="sheet-grab" onPointerDown={pointerDown} onPointerMove={pointerMove}
         onPointerUp={pointerUp} onPointerCancel={pointerUp} aria-label="Arraste para expandir ou reduzir o painel">
         <GripHorizontal size={26} strokeWidth={1.6} />

@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Award, Check, Clock3, Coffee, Gift, Heart, Plus, Sparkles, Trash2, TrendingUp } from 'lucide-react';
 import { pointsBalance, weekActivity } from '../lib/engine';
 import { useApp } from '../state/AppState';
-import { Button, EmptyState, Eyebrow, SectionHeader, Stat, Surface } from '../components/ui';
+import { Button, EmptyState, SectionHeader, Stat, Surface } from '../components/ui';
 
 const units = (count: number) => count === 1 ? 'ponto' : 'pontos';
 
@@ -27,9 +27,7 @@ export function Evolucao() {
     setRewardCost(30);
   };
   return <div className="screen evolution-screen">
-    <header className="page-intro"><Eyebrow>OLHE O QUANTO JÁ CAMINHOU</Eyebrow>
-      <h1>Seu progresso,<br/><span>no seu ritmo.</span></h1>
-      <p>Pequenas conquistas merecem ser percebidas.</p></header>
+
 
     <Surface className="evolution-hero">
       <div><div className="points-label"><Sparkles size={16}/> PONTOS DE EVOLUÇÃO</div>

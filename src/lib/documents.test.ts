@@ -31,8 +31,18 @@ describe('documentos do NowWork', () => {
     const data = validateData({ ...emptyData(), notes: [{
       id: '1', subjectId: 'math', title: 'Resumo', blocks: [{ id: 'a', type: 'text', text: 'Texto antigo' }], content,
     }] });
-    expect(data.notes[0].content).toEqual(content);
+    expect(data.notes[0].content).toMatchObject(content);
     expect(noteText(data.notes[0])).toBe('Texto novo');
+  });
+
+  it('restaura tabelas, realces e alinhamento da nova barra', () => {
+    const formatted = { type: 'paragraph', attrs: { textAlign: 'center' }, content: [
+      { type: 'text', text: 'Fórmula', marks: [{ type: 'highlight' }] },
+    ] };
+    const content = { type: 'doc', content: [{ type: 'table', content: [{ type: 'tableRow', content: [
+      { type: 'tableCell', content: [formatted] },
+    ] }] }] };
+    expect(validateDocument(content)).toMatchObject(content);
   });
 
   it('recusa links executáveis e estruturas fora do esquema', () => {

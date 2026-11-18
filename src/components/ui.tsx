@@ -83,15 +83,3 @@ export function Segment<T extends string>({ label, options, value, onChange, cla
       onClick={() => onChange(item.id)}>{item.label}</Button>)}
   </div>;
 }
-
-export function NavButton({ active, onClick, icon, children, animation, className = '' }: {
-  active?: boolean; onClick: () => void; icon: ReactNode; children: ReactNode; animation?: string; className?: string;
-}) {
-  const reduced = useReducedMotion();
-  const { data } = useApp();
-  const animate = !reduced && !data.profile.reducedMotion;
-  return <Button variant="ghost" className={'ds-nav-button ' + className} aria-current={active ? 'page' : undefined} onClick={onClick}>
-    {active && <motion.span aria-hidden="true" layoutId={animate ? animation : undefined} className="ds-nav-active" transition={springs.panel} />}
-    {icon}<span className="ds-nav-label">{children}</span>
-  </Button>;
-}

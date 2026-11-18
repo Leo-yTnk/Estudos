@@ -1,10 +1,10 @@
 import { motion, useReducedMotion } from 'motion/react';
-import { type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { type ComponentPropsWithoutRef, type ReactNode } from 'react';
 import { springs } from '../lib/motion';
 import { useApp } from '../state/AppState';
 import { ArrowUpRight, Inbox } from 'lucide-react';
 
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+type ButtonProps = Omit<ComponentPropsWithoutRef<typeof motion.button>, 'children' | 'size'> & {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg';
   icon?: ReactNode;

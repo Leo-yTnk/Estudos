@@ -24,13 +24,8 @@ export function Agora({ onMind, onBreak }: { onMind: () => void; onBreak: () => 
     const interval = window.setInterval(() => setNow(new Date()), data.focus || data.break ? 1000 : 30000);
     return () => clearInterval(interval);
   }, [data.focus, data.break]);
-  useEffect(() => {
-    if (data.break && now.getTime() >= Date.parse(data.break.startedAt) + data.break.minutes * 60000) {
-      app.finishBreak();
-    }
-  }, [now, data.break]);
   const tasks = rankedTasks(data, now);
-  const chosen = tasks[0];
+  const chosen = tasks.find((task) => task.id === data.focus?.entryId) || tasks[0];
   const active = data.entries.filter((e) => e.status === 'active');
   const soon = active.filter((e) => e.dueAt && (dueDays(e, now) ?? Infinity) <= 2);
   const nextEvent = data.entries.filter((e) => e.kind === 'event' && e.status === 'active' && e.dueAt)
@@ -52,7 +47,7 @@ export function Agora({ onMind, onBreak }: { onMind: () => void; onBreak: () => 
 
     <Surface className="assistant-card">
       <div className="assistant-avatar"><Sparkles size={18}/></div>
-      <div className="assistant-copy"><div className="assistant-name">brisa <span>· seu companheiro</span></div>
+      <div className="assistant-copy"><div className="assistant-name">NowWork <span>· sugestão de foco</span></div>
         <p>{assistantMessage(data, now)}</p>
       </div>
     </Surface>
@@ -68,7 +63,7 @@ export function Agora({ onMind, onBreak }: { onMind: () => void; onBreak: () => 
 
     <SectionHeader label="Seu próximo passo" trailing={<span className="section-note">Só um de cada vez</span>}/>
     {chosen ? <Surface className="priority-card">
-      <div className="priority-top"><KindPill tone="teal">Sugerido para agora</KindPill>
+      <div className="priority-top"><KindPill tone="teal">{focus ? 'Em foco' : 'Sugerido para agora'}</KindPill>
         <span className="priority-points"><Flame size={14}/> +{pointsFor(chosen)} pts</span></div>
       <h2>{chosen.title}</h2>
       <div className="priority-meta"><span><Clock3 size={16}/> {chosen.minutes} minutos estimados</span>
@@ -93,8 +88,8 @@ export function Agora({ onMind, onBreak }: { onMind: () => void; onBreak: () => 
         <Button variant="ghost" size="sm" icon={<ArrowRight size={15}/>} onClick={() => {app.divideEntry(chosen.id);}}>Dividir em passos</Button>
       </div>
     </Surface> : <Surface><EmptyState icon={<Sparkles size={24}/>} title="Nada exige sua atenção agora."
-      description={active.length ? 'Não há tarefas executáveis em aberto. Compromissos, ideias e preocupações continuam guardados na Mente.' : 'Seu espaço está livre. Registre uma atividade quando precisar — ou simplesmente aproveite a pausa.'}
-      action={<Button variant="primary" icon={<ArrowRight size={16}/>} onClick={onMind}>Ir para Mente</Button>}/></Surface>}
+      description={active.length ? 'Não há tarefas executáveis em aberto. Compromissos, ideias e preocupações continuam guardados em Capturas.' : 'Seu espaço está livre. Registre uma atividade quando precisar — ou simplesmente aproveite a pausa.'}
+      action={<Button variant="primary" icon={<ArrowRight size={16}/>} onClick={onMind}>Ir para Capturas</Button>}/></Surface>}
     {focus && focus.entryId !== chosen?.id && <div className="inline-alert">Uma sessão de foco está em andamento. <Button variant="ghost" size="sm" onClick={app.finishFocus}>Encerrar foco ({countdown(focusSeconds)})</Button></div>}
 
     <div className="two-panels">
@@ -111,7 +106,7 @@ export function Agora({ onMind, onBreak }: { onMind: () => void; onBreak: () => 
         <Eyebrow>VISÃO LEVE</Eyebrow>
         <div className="stats-row"><Stat value={active.length} label="registros abertos"/><Stat value={soon.length} label="prazos até 2 dias"/></div>
         {nextEvent && <p className="event-reminder"><Clock3 size={14}/> Próximo compromisso: {nextEvent.title} · {dueLabel(nextEvent.dueAt)}</p>}
-        <Button variant="ghost" size="sm" icon={<ArrowRight size={15}/>} onClick={onMind}>Ver minha Mente</Button>
+        <Button variant="ghost" size="sm" icon={<ArrowRight size={15}/>} onClick={onMind}>Ver capturas</Button>
       </Surface>
     </div>
   </div>;

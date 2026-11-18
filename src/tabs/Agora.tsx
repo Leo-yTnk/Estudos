@@ -5,11 +5,6 @@ import { useApp } from '../state/AppState';
 import { Button, EmptyState, Eyebrow, KindPill, SectionHeader, Stat, Surface } from '../components/ui';
 import type { Energy } from '../types';
 
-function greeting(now: Date, name: string) {
-  const hour = now.getHours();
-  const lead = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
-  return lead + (name.trim() ? ', ' + name.trim().split(' ')[0] : '') + '.';
-}
 function countdown(seconds: number): string {
   const min = Math.floor(Math.max(0, seconds) / 60);
   const sec = Math.max(0, seconds) % 60;
@@ -39,12 +34,6 @@ export function Agora({ onMind, onBreak }: { onMind: () => void; onBreak: () => 
     { value: 3, label: 'Alta', icon: Zap },
   ];
   return <div className="screen now-screen">
-    <div className="hero-intro"><div><Eyebrow>SEU ESPAÇO DE CLAREZA</Eyebrow>
-      <h1>{greeting(now, data.profile.name)}</h1>
-      <p className="hero-subtitle">Vamos cuidar de uma coisa por vez.</p></div>
-      <div className="hero-flower" aria-hidden="true"><Sparkles size={26} strokeWidth={1.4}/></div>
-    </div>
-
     <Surface className="assistant-card">
       <div className="assistant-avatar"><Sparkles size={18}/></div>
       <div className="assistant-copy"><div className="assistant-name">NowWork <span>· sugestão de foco</span></div>
@@ -88,8 +77,8 @@ export function Agora({ onMind, onBreak }: { onMind: () => void; onBreak: () => 
         <Button variant="ghost" size="sm" icon={<ArrowRight size={15}/>} onClick={() => {app.divideEntry(chosen.id);}}>Dividir em passos</Button>
       </div>
     </Surface> : <Surface><EmptyState icon={<Sparkles size={24}/>} title="Nada exige sua atenção agora."
-      description={active.length ? 'Não há tarefas executáveis em aberto. Compromissos, ideias e preocupações continuam guardados em Capturas.' : 'Seu espaço está livre. Registre uma atividade quando precisar — ou simplesmente aproveite a pausa.'}
-      action={<Button variant="primary" icon={<ArrowRight size={16}/>} onClick={onMind}>Ir para Capturas</Button>}/></Surface>}
+      description={active.length ? 'Não há tarefas executáveis em aberto. Compromissos, ideias e preocupações continuam guardados na Caixa de entrada.' : 'Seu espaço está livre. Registre uma atividade quando precisar — ou simplesmente aproveite a pausa.'}
+      action={<Button variant="primary" icon={<ArrowRight size={16}/>} onClick={onMind}>Abrir caixa de entrada</Button>}/></Surface>}
     {focus && focus.entryId !== chosen?.id && <div className="inline-alert">Uma sessão de foco está em andamento. <Button variant="ghost" size="sm" onClick={app.finishFocus}>Encerrar foco ({countdown(focusSeconds)})</Button></div>}
 
     <div className="two-panels">
@@ -106,7 +95,7 @@ export function Agora({ onMind, onBreak }: { onMind: () => void; onBreak: () => 
         <Eyebrow>VISÃO LEVE</Eyebrow>
         <div className="stats-row"><Stat value={active.length} label="registros abertos"/><Stat value={soon.length} label="prazos até 2 dias"/></div>
         {nextEvent && <p className="event-reminder"><Clock3 size={14}/> Próximo compromisso: {nextEvent.title} · {dueLabel(nextEvent.dueAt)}</p>}
-        <Button variant="ghost" size="sm" icon={<ArrowRight size={15}/>} onClick={onMind}>Ver capturas</Button>
+        <Button variant="ghost" size="sm" icon={<ArrowRight size={15}/>} onClick={onMind}>Ver caixa de entrada</Button>
       </Surface>
     </div>
   </div>;

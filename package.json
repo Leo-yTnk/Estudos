@@ -1,9 +1,9 @@
 {
-  "name": "brisa",
-  "version": "0.1.0",
+  "name": "nowwork",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Um assistente gentil para fazer o necessário e descansar em paz.",
+  "description": "Espaço de estudos com tarefas, agenda, cadernos e revisão por matéria.",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

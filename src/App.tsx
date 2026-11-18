@@ -1,33 +1,27 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { Brain, CalendarDays, ChartNoAxesCombined, Check, CircleHelp, Coffee, Download, LayoutDashboard, ListTodo, Pencil, Plus, Search, Settings2, ShieldCheck, Sparkles, Timer, Trash2, Upload, X } from 'lucide-react';
+import { Check, ChevronRight, CircleHelp, Coffee, Download, Pencil, Plus, Search, ShieldCheck, Sparkles, Trash2, Upload, X } from 'lucide-react';
 import { AppProvider, useApp } from './state/AppState';
 import { ElasticSheet } from './components/ElasticSheet';
-import { Button } from './components/ui';
+import { Button, IconButton, PageHeading, Segment, Stack, Toolbar } from './components/ui';
+import { MobileNavigation, WorkspaceLogo, WorkspaceSidebar, WorkspaceTools, workspacePages, type WorkspacePage } from './components/WorkspaceNavigation';
 import { Agora } from './tabs/Agora';
 import { Mente } from './tabs/Mente';
 import { Evolucao } from './tabs/Evolucao';
 import { validateData } from './lib/storage';
 import { springs } from './lib/motion';
 import type { Subject, Theme } from './types';
-import { Dashboard, SubjectMark } from './study/Dashboard';
+import { Dashboard } from './study/Dashboard';
+import { Subjects, SubjectOverview, SubjectMark, subjectTools, type SubjectTool } from './study/Subjects';
 import { Tasks, Week } from './study/Planner';
 import { Notebook } from './study/Notebook';
 import { Review } from './study/Review';
 import { WorkspaceSearch, TaskForm, SubjectForm } from './study/WorkspacePanels';
 
-const pages = [
-  { id: 'home', title: 'Visão geral', icon: LayoutDashboard },
-  { id: 'tasks', title: 'Tarefas', icon: ListTodo },
-  { id: 'calendar', title: 'Agenda', icon: CalendarDays },
-  { id: 'focus', title: 'Foco', icon: Timer },
-  { id: 'evolution', title: 'Evolução', icon: ChartNoAxesCombined },
-  { id: 'mind', title: 'Capturas', icon: Brain },
-] as const;
-type SubjectTab = 'tasks' | 'notes' | 'review';
-type Page = { id: typeof pages[number]['id']; entryId?: string } | { id: 'subject'; subjectId: string; tab: SubjectTab; noteId?: string };
-type Sheet = { kind: 'settings' | 'break' | 'search' } | { kind: 'task'; subjectId?: string; dueAt?: string | null } | { kind: 'subject'; subject?: Subject };
-
+const subjectTabs = [{ id: 'overview', label: 'Resumo' }, ...subjectTools] as const;
+type SubjectTab = SubjectTool | 'overview';
+type Page = { id: WorkspacePage; entryId?: string } | { id: 'subject'; subjectId: string; tab: SubjectTab; noteId?: string };
+type Sheet = { kind: 'settings' | 'break' | 'search' | 'tools' } | { kind: 'task'; subjectId?: string; dueAt?: string | null } | { kind: 'subject'; subject?: Subject };
 
 function Settings() {
   const app = useApp();
@@ -100,7 +94,7 @@ function AppContent() {
   const systemReduced = useReducedMotion();
   const reduce = !!systemReduced || app.data.profile.reducedMotion;
   const subject = page.id === 'subject' ? app.data.subjects.find(({ id }) => id === page.subjectId) : undefined;
-  const subjectPage = (id: string, tab: SubjectTab = 'tasks', noteId?: string) => setPage({ id: 'subject', subjectId: id, tab, noteId });
+  const subjectPage = (id: string, tab: SubjectTab = 'overview', noteId?: string) => setPage({ id: 'subject', subjectId: id, tab, noteId });
   const newTask = (dueAt?: string | null) => setSheet({ kind: 'task', subjectId: subject?.id, dueAt });
   const openTask = (id: string) => {
     const entry = app.data.entries.find((item) => item.id === id);
@@ -118,74 +112,72 @@ function AppContent() {
     return () => window.removeEventListener('keydown', onKey);
   }, [sheet]);
   if (!app.ready) return <div className="loading-shell"><div className="nw-logo"><span className="nw-logo-icon"><Sparkles size={18} /></span>NowWork</div><p>Preparando seu espaço…</p></div>;
-  const section = page.id === 'subject' ? subject?.title || 'Matérias' : pages.find(({ id }) => id === page.id)?.title;
-  const title = page.id === 'home' ? 'Estudos' : section;
+  const workspacePage = page.id === 'subject' ? 'subjects' : page.id;
+  const section = page.id === 'subject' ? subject?.title || 'Matérias' : workspacePages.find(({ id }) => id === page.id)?.title || '';
+  const open = (id: WorkspacePage) => setPage({ id });
+  const createSubject = () => setSheet({ kind: 'subject' });
+  const settings = () => setSheet({ kind: 'settings' });
   const descriptions = {
     tasks: 'Organize entregas, exercícios e compromissos.',
     calendar: 'Veja os prazos e planeje uma semana de cada vez.',
   };
-  const sheetTitles = { settings: 'Configurações', break: 'Uma pausa para respirar', search: 'Buscar no NowWork', task: 'Novo registro', subject: sheet?.kind === 'subject' && sheet.subject ? 'Editar matéria' : 'Nova matéria' };
+  const sheetTitles = { settings: 'Configurações', break: 'Uma pausa para respirar', search: 'Buscar no NowWork',
+    tools: 'Mais ferramentas', task: 'Novo registro', subject: sheet?.kind === 'subject' && sheet.subject ? 'Editar matéria' : 'Nova matéria' };
   return <div className="nw-shell">
-    <aside className="nw-sidebar">
-      <button type="button" className="nw-logo" onClick={() => setPage({ id: 'home' })}><span className="nw-logo-icon"><Sparkles size={19} /></span>NowWork</button>
-      <nav className="nw-navigation" aria-label="Navegação principal">{pages.map(({ id, title, icon: Icon }) =>
-        <button key={id} type="button" aria-current={page.id === id ? 'page' : undefined} onClick={() => setPage({ id })}>
-          {page.id === id && <motion.span className="nw-nav-active" layoutId="sidebar-active" transition={reduce ? { duration: 0 } : springs.panel} />}
-          <Icon size={18} /><span>{title}</span>
-        </button>)}</nav>
-      <div className="nw-side-subjects">
-        <div className="nw-side-label"><span>Matérias</span><button type="button" className="nw-icon" aria-label="Adicionar matéria" onClick={() => setSheet({ kind: 'subject' })}><Plus size={17} /></button></div>
-        <nav className="nw-navigation" aria-label="Matérias">{app.data.subjects.map((item) =>
-          <button key={item.id} type="button" aria-current={subject?.id === item.id ? 'page' : undefined} onClick={() => subjectPage(item.id)}>
-            {subject?.id === item.id && <motion.span className="nw-nav-active" layoutId="sidebar-active" transition={reduce ? { duration: 0 } : springs.panel} />}
-            <i className={'nw-subject-dot tone-' + item.color} /><span>{item.title}</span>
-          </button>)}</nav>
-      </div>
-      <button type="button" className="nw-settings" onClick={() => setSheet({ kind: 'settings' })}><Settings2 size={18} /> Configurações</button>
-    </aside>
+    <WorkspaceSidebar current={workspacePage} open={open} settings={settings} />
     <div className="nw-content">
       <header className="nw-header">
-        <div className="nw-breadcrumb"><span>Meu espaço</span><span aria-hidden="true">/</span><strong>{title}</strong></div>
-        <button type="button" className="nw-logo nw-mobile-logo" onClick={() => setPage({ id: 'home' })}><span className="nw-logo-icon"><Sparkles size={16} /></span>NowWork</button>
-        <div className="nw-toolbar">
-          <button type="button" className="nw-search" aria-label="Buscar" onClick={() => setSheet({ kind: 'search' })}><Search size={16} /><span>Buscar</span><kbd>Ctrl K</kbd></button>
-          <button type="button" className="nw-icon nw-mobile-settings" aria-label="Configurações" onClick={() => setSheet({ kind: 'settings' })}><Settings2 size={19} /></button>
-          <Button aria-label="Novo registro" className="nw-new" variant="primary" icon={<Plus size={17} />} onClick={() => newTask()}>Novo<span className="nw-new-extra"> registro</span></Button>
-        </div>
+        <nav className="nw-breadcrumb" aria-label="Caminho atual">
+          <Button size="sm" variant="ghost" onClick={() => open('home')}>Estudos</Button>
+          {page.id !== 'home' && <><ChevronRight size={13} aria-hidden="true" />
+            {subject ? <><Button size="sm" variant="ghost" onClick={() => open('subjects')}>Matérias</Button><ChevronRight size={13} aria-hidden="true" /></> : null}
+            <strong>{section}</strong></>}
+        </nav>
+        <WorkspaceLogo mobile onClick={() => open('home')} />
+        <Toolbar>
+          <Button size="sm" variant="ghost" className="nw-search" aria-label="Buscar" onClick={() => setSheet({ kind: 'search' })}>
+            <Search size={17} /><span>Buscar</span><kbd>Ctrl K</kbd></Button>
+          {workspacePage !== 'subjects' && <Button aria-label="Novo registro" className="nw-new" variant="primary" icon={<Plus size={17} />} onClick={() => newTask()}>
+            Novo<span className="nw-new-extra"> registro</span></Button>}
+        </Toolbar>
       </header>
       <main className="nw-main" id="main-content">
-        <motion.div key={page.id === 'subject' ? page.subjectId : page.id} initial={reduce ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+        <motion.div key={page.id === 'subject' ? page.subjectId : page.id}
+          initial={reduce ? false : { opacity: 0, y: 7 }} animate={{ opacity: 1, y: 0 }}
           transition={reduce ? { duration: 0 } : { duration: .2 }}>
-          {(page.id === 'home' || (page.id === 'subject' && !subject)) && <Dashboard subject={subjectPage} newSubject={() => setSheet({ kind: 'subject' })}
-            tasks={() => setPage({ id: 'tasks' })} focus={() => setPage({ id: 'focus' })} add={newTask} openTask={openTask} />}
-          {(page.id === 'tasks' || page.id === 'calendar') && <div className="nw-stack">
-            <div className="nw-page-title"><h1>{section}</h1><p>{descriptions[page.id]}</p></div>
+          {page.id === 'home' && <Dashboard subject={subjectPage} subjects={() => open('subjects')} newSubject={createSubject}
+            focus={() => open('focus')} add={newTask} openTask={openTask} />}
+          {(page.id === 'subjects' || (page.id === 'subject' && !subject)) && <Subjects open={subjectPage} create={createSubject} />}
+          {(page.id === 'tasks' || page.id === 'calendar') && <Stack className="workspace-page">
+            <PageHeading title={section} description={descriptions[page.id]} />
             {page.id === 'tasks' ? <Tasks key={page.entryId || 'all'} onlyId={page.entryId} onAdd={() => newTask()} /> : <Week onAdd={newTask} />}
-          </div>}
-          {page.id === 'subject' && subject && <div className="nw-stack">
-            <div className="nw-subject-title"><SubjectMark subject={subject} /><div className="nw-page-title"><h1>{subject.title}</h1></div>
-              <button type="button" className="nw-icon" aria-label="Editar matéria" onClick={() => setSheet({ kind: 'subject', subject })}><Pencil size={18} /></button></div>
-            <div className="nw-segment nw-subject-tabs" aria-label="Ferramentas da matéria">
-              {([['tasks', 'Tarefas'], ['notes', 'Caderno'], ['review', 'Revisão']] as const).map(([id, label]) =>
-                <button key={id} type="button" aria-pressed={page.tab === id} onClick={() => subjectPage(subject.id, id)}>{label}</button>)}
-            </div>
+          </Stack>}
+          {page.id === 'subject' && subject && <Stack className="workspace-page">
+            <Toolbar label="Caminho da matéria" className="subject-path">
+              <Button size="sm" variant="ghost" onClick={() => open('subjects')}>Matérias</Button>
+              <ChevronRight size={14} aria-hidden="true" /><span>{subject.title}</span>
+            </Toolbar>
+            <PageHeading title={subject.title} icon={<SubjectMark subject={subject} />}
+              action={<IconButton label="Editar matéria" onClick={() => setSheet({ kind: 'subject', subject })}><Pencil size={18} /></IconButton>} />
+            <Segment label="Ferramentas da matéria" className="subject-tabs" options={subjectTabs} value={page.tab}
+              onChange={(tab) => subjectPage(subject.id, tab)} />
+            {page.tab === 'overview' && <SubjectOverview subject={subject} select={(tab) => subjectPage(subject.id, tab)} />}
             {page.tab === 'tasks' && <Tasks key={subject.id} subjectId={subject.id} onAdd={() => newTask()} />}
             {page.tab === 'notes' && <Notebook key={subject.id} subjectId={subject.id} noteId={page.noteId} open={(id) => subjectPage(subject.id, 'notes', id)} />}
             {page.tab === 'review' && <Review key={subject.id} subjectId={subject.id} />}
-          </div>}
-          {page.id === 'focus' && <Agora onMind={() => setPage({ id: 'mind' })} onBreak={() => setSheet({ kind: 'break' })} />}
+          </Stack>}
+          {page.id === 'focus' && <Agora onMind={() => open('mind')} onBreak={() => setSheet({ kind: 'break' })} />}
           {page.id === 'mind' && <Mente key={page.entryId || 'all'} selectedId={page.entryId} />}
           {page.id === 'evolution' && <Evolucao />}
         </motion.div>
       </main>
     </div>
-    <nav className="nw-mobile-nav" aria-label="Navegação móvel">{pages.map(({ id, title, icon: Icon }) =>
-      <button key={id} type="button" aria-current={page.id === id || (page.id === 'subject' && id === 'home') ? 'page' : undefined}
-        onClick={() => setPage({ id })}><Icon size={19} /><span>{id === 'home' ? 'Início' : title}</span></button>)}</nav>
+    <MobileNavigation current={workspacePage} open={open} more={() => setSheet({ kind: 'tools' })} />
 
     <AnimatePresence>{sheet && <ElasticSheet key={sheet.kind} title={sheetTitles[sheet.kind]} onClose={close}>
       {(dismiss: () => void) => <>
         {sheet.kind === 'settings' && <Settings />}
+        {sheet.kind === 'tools' && <WorkspaceTools open={(id) => { open(id); dismiss(); }} settings={settings} />}
         {sheet.kind === 'task' && <TaskForm subjectId={sheet.subjectId} dueAt={sheet.dueAt} close={dismiss} />}
         {sheet.kind === 'subject' && <SubjectForm subject={sheet.subject} close={dismiss}
           save={(value) => { app.saveSubject(value); subjectPage(value.id); dismiss(); }}

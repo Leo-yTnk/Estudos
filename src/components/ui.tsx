@@ -56,3 +56,42 @@ export function KindPill({ children, tone = 'neutral' }: { children: ReactNode; 
 export function ExternalHint({ children }: { children: ReactNode }) {
   return <span className="external-hint">{children}<ArrowUpRight size={13} /></span>;
 }
+
+export function Stack({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return <div className={'ds-stack ' + className}>{children}</div>;
+}
+
+export function Toolbar({ children, label, className = '' }: { children: ReactNode; label?: string; className?: string }) {
+  return <div className={'ds-toolbar ' + className} role={label ? 'group' : undefined} aria-label={label}>{children}</div>;
+}
+
+export function IconButton({ label, children, ...props }: Omit<ButtonProps, 'children' | 'aria-label'> & { label: string; children: ReactNode }) {
+  return <Button {...props} aria-label={label} title={label} variant={props.variant || 'ghost'} size="sm"
+    className={'ds-icon-button ' + (props.className || '')}>{children}</Button>;
+}
+
+export function PageHeading({ title, description, icon, action }: { title: string; description?: string; icon?: ReactNode; action?: ReactNode }) {
+  return <header className="ds-page-heading"><div className="ds-page-heading-main">{icon}<div>
+    <h1>{title}</h1>{description && <p>{description}</p>}</div></div>{action && <div className="ds-page-actions">{action}</div>}</header>;
+}
+
+export function Segment<T extends string>({ label, options, value, onChange, className = '' }: {
+  label: string; options: readonly { id: T; label: ReactNode }[]; value: T; onChange: (value: T) => void; className?: string;
+}) {
+  return <div className={'ds-segment ' + className} role="group" aria-label={label}>
+    {options.map((item) => <Button key={item.id} variant="ghost" size="sm" aria-pressed={item.id === value}
+      onClick={() => onChange(item.id)}>{item.label}</Button>)}
+  </div>;
+}
+
+export function NavButton({ active, onClick, icon, children, animation, className = '' }: {
+  active?: boolean; onClick: () => void; icon: ReactNode; children: ReactNode; animation?: string; className?: string;
+}) {
+  const reduced = useReducedMotion();
+  const { data } = useApp();
+  const animate = !reduced && !data.profile.reducedMotion;
+  return <Button variant="ghost" className={'ds-nav-button ' + className} aria-current={active ? 'page' : undefined} onClick={onClick}>
+    {active && <motion.span aria-hidden="true" layoutId={animate ? animation : undefined} className="ds-nav-active" transition={springs.panel} />}
+    {icon}<span className="ds-nav-label">{children}</span>
+  </Button>;
+}

@@ -1,3 +1,4 @@
+import { validateDocument } from './documents';
 import { BLOCK_TYPES, SUBJECT_COLORS, emptyData, uid } from '../types';
 import type { AppData, Entry, Activity, Reward } from '../types';
 
@@ -35,6 +36,7 @@ export function validateData(value: unknown): AppData {
   ).map((note) => ({
     id: String(note.id || uid()), subjectId: note.subjectId, title: note.title.slice(0, 150),
     updatedAt: String(note.updatedAt || new Date().toISOString()),
+    ...(note.content === undefined ? {} : { content: validateDocument(note.content) }),
     blocks: note.blocks.slice(0, 250).filter(
       (block) => block && BLOCK_TYPES.includes(block.type) && typeof block.text === 'string',
     ).map((block) => ({

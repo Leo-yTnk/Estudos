@@ -15,6 +15,7 @@ interface AppContextValue {
   saveSubject: (subject: Subject) => void;
   removeSubject: (id: string) => void;
   saveNote: (note: StudyNote) => void;
+  updateNote: (id: string, patch: Partial<Pick<StudyNote, 'title' | 'content'>>) => void;
   removeNote: (id: string) => void;
   saveFlashcard: (card: Flashcard) => void;
   removeFlashcard: (id: string) => void;
@@ -103,6 +104,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     flashcards: d.flashcards.filter((card) => card.subjectId !== id),
   }));
   const saveNote = (note: StudyNote) => setData((d) => ({ ...d, notes: upsert(d.notes, { ...note, updatedAt: stamped() }) }));
+  const updateNote = (id: string, patch: Partial<Pick<StudyNote, 'title' | 'content'>>) => setData((d) => ({
+    ...d, notes: d.notes.map((note) => note.id === id ? { ...note, ...patch, updatedAt: stamped() } : note),
+  }));
   const removeNote = (id: string) => setData((d) => ({ ...d, notes: d.notes.filter((note) => note.id !== id) }));
   const saveFlashcard = (card: Flashcard) => setData((d) => ({ ...d, flashcards: upsert(d.flashcards, card) }));
   const removeFlashcard = (id: string) => setData((d) => ({ ...d, flashcards: d.flashcards.filter((card) => card.id !== id) }));
@@ -280,7 +284,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const restore = (next: AppData) => { setData(next); notify('Backup importado com sucesso.'); };
   const clearAll = () => { setData(emptyData()); deletedRef.current = null; notify('Dados locais reiniciados.'); };
 
-  return <Context.Provider value={{ data, ready, toast, dismissToast, notify, saveSubject, removeSubject, saveNote, removeNote, saveFlashcard, removeFlashcard, updateProfile, addEntry, editEntry,
+  return <Context.Provider value={{ data, ready, toast, dismissToast, notify, saveSubject, removeSubject, saveNote, updateNote, removeNote, saveFlashcard, removeFlashcard, updateProfile, addEntry, editEntry,
     completeEntry, reopenEntry, postponeEntry, archiveEntry, restoreEntry, deleteEntry, undoDelete, divideEntry, addStep, toggleStep,
     startFocus, finishFocus, startBreak, finishBreak, addReward, deleteReward, redeemReward, addDemo,
     removeDemo, restore, clearAll }}>

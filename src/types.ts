@@ -1,3 +1,5 @@
+import type { JSONContent } from '@tiptap/core';
+
 export type EntryKind = 'task' | 'event' | 'worry' | 'idea';
 export type EntryStatus = 'active' | 'done' | 'archived';
 export type Energy = 1 | 2 | 3;
@@ -16,7 +18,7 @@ export type SubjectColor = typeof SUBJECT_COLORS[number];
 export interface Subject { id: string; title: string; color: SubjectColor }
 export const BLOCK_TYPES = ['text', 'heading', 'check', 'link'] as const;
 export interface NoteBlock { id: string; type: typeof BLOCK_TYPES[number]; text: string; checked?: boolean; url?: string }
-export interface StudyNote { id: string; subjectId: string; title: string; blocks: NoteBlock[]; updatedAt: string }
+export interface StudyNote { id: string; subjectId: string; title: string; blocks: NoteBlock[]; content?: JSONContent; updatedAt: string }
 export interface Flashcard { id: string; subjectId: string; front: string; back: string; due: string; interval: number }
 
 export interface Entry {

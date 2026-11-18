@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import { ArrowDownUp, CalendarDays, Check, ChevronLeft, ChevronRight, ListTodo, Plus } from 'lucide-react';
 import { EntryCard } from '../components/EntryCard';
-import { Button, EmptyState, Surface } from '../components/ui';
+import { Button, EmptyState, IconButton, Segment, Surface } from '../components/ui';
 import { asLocalDate, dateToDeadline } from '../lib/engine';
 import { springs } from '../lib/motion';
 import { useApp } from '../state/AppState';
@@ -38,8 +38,8 @@ export function Tasks({ subjectId, onAdd, onlyId }: { subjectId?: string; onAdd:
     });
   return <div className="nw-stack">
     <div className="nw-section-heading nw-wrap">
-      <div className="nw-segment" aria-label="Estado das tarefas">{Object.entries(statusNames).map(([value, label]) =>
-        <button type="button" key={value} aria-pressed={status === value} onClick={() => setStatus(value as Entry['status'])}>{label} <span>{entries.filter((entry) => entry.status === value).length}</span></button>)}</div>
+      <Segment label="Estado das tarefas" value={status} onChange={setStatus}
+        options={(['active', 'done', 'archived'] as const).map((id) => ({ id, label: <>{statusNames[id]} <span>{entries.filter((entry) => entry.status === id).length}</span></> }))} />
       <Button size="sm" variant="primary" icon={<Plus size={16} />} onClick={onAdd}>Nova tarefa</Button>
     </div>
     <div className="nw-toolbar nw-filters">
@@ -76,9 +76,9 @@ export function Week({ onAdd, compact = false }: { onAdd: (due?: string | null) 
     <div className="nw-section-heading"><div><h2>{compact ? 'Esta semana' : 'Semana de ' + format.format(days[0])}</h2>
       <span className="nw-muted">{format.format(days[0])} – {format.format(days[6])}</span></div>
       <div className="nw-toolbar">
-        <button type="button" className="nw-icon" aria-label="Semana anterior" onClick={() => shift(-7)}><ChevronLeft size={18} /></button>
+        <IconButton label="Semana anterior" onClick={() => shift(-7)}><ChevronLeft size={18} /></IconButton>
         {!compact && <button className="nw-today" type="button" onClick={() => select(new Date())}>Hoje</button>}
-        <button type="button" className="nw-icon" aria-label="Próxima semana" onClick={() => shift(7)}><ChevronRight size={18} /></button>
+        <IconButton label="Próxima semana" onClick={() => shift(7)}><ChevronRight size={18} /></IconButton>
       </div>
     </div>
     <div className="nw-days" aria-label="Dias da semana">{days.map((day) => {

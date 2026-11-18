@@ -1,6 +1,6 @@
 # NowWork
 
-Espaço de estudos por matéria. Disponível em [GitHub Pages](https://leo-ytnk.github.io/Estudos/).
+Espaço de estudos por matéria. Disponível em [GitHub Pages](https://leo-ytnk.github.io/NowWork/).
 
 - **Visão geral** com prazos, próxima ação e progresso do dia.
 - **Tarefas** com prazos, prioridade, subtarefas, filtros e arquivo.
@@ -28,6 +28,6 @@ npm test
 npm run build
 ```
 
-O GitHub Actions publica o diretório `dist` no GitHub Pages a partir de `main`. O Vite usa a base `/Estudos/` na produção.
+O GitHub Actions publica o diretório `dist` no GitHub Pages a partir de `main`. O Vite gera caminhos relativos para que o site funcione no diretório publicado pelo GitHub Pages.
 
 Licença MIT.

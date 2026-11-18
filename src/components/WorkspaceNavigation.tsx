@@ -1,57 +1,47 @@
-import { Brain, CalendarDays, ChartNoAxesCombined, Ellipsis, LayoutDashboard, LibraryBig, ListTodo, Settings2, Sparkles, Timer } from 'lucide-react';
-import { Button, NavButton } from './ui';
+import { motion, useReducedMotion } from 'motion/react';
+import { CalendarDays, House, LibraryBig, Search, Settings2, Sparkles, Timer } from 'lucide-react';
+import { areas, routeHref, type Area } from '../lib/navigation';
+import { springs } from '../lib/motion';
+import { useApp } from '../state/AppState';
+import { IconButton, Toolbar } from './ui';
 
-export const primaryPages = [
-  { id: 'home', title: 'Visão geral', mobile: 'Início', Icon: LayoutDashboard },
-  { id: 'subjects', title: 'Matérias', mobile: 'Matérias', Icon: LibraryBig },
-  { id: 'tasks', title: 'Tarefas', mobile: 'Tarefas', Icon: ListTodo },
-  { id: 'calendar', title: 'Agenda', mobile: 'Agenda', Icon: CalendarDays },
+const destinations = [
+  { area: 'hoje', title: 'Hoje', Icon: House },
+  { area: 'planejar', title: 'Planejar', Icon: CalendarDays },
+  { area: 'materias', title: 'Matérias', Icon: LibraryBig },
+  { area: 'estudar', title: 'Estudar', Icon: Timer },
 ] as const;
-export const utilityPages = [
-  { id: 'focus', title: 'Foco', Icon: Timer },
-  { id: 'evolution', title: 'Evolução', Icon: ChartNoAxesCombined },
-  { id: 'mind', title: 'Capturas', Icon: Brain },
-] as const;
-export const workspacePages = [...primaryPages, ...utilityPages];
-export type WorkspacePage = typeof workspacePages[number]['id'];
 
-type NavigationProps = { current: WorkspacePage; open: (page: WorkspacePage) => void; settings: () => void };
-
-export function WorkspaceLogo({ onClick, mobile = false }: { onClick: () => void; mobile?: boolean }) {
-  return <button type="button" className={'nw-logo ' + (mobile ? 'nw-mobile-logo' : '')} onClick={onClick}>
-    <span className="nw-logo-icon"><Sparkles size={18} /></span>NowWork
-  </button>;
+export function WorkspaceNavigation({ current, search, settings }: { current: Area; search: () => void; settings: () => void }) {
+  const reduced = useReducedMotion();
+  const { data } = useApp();
+  const animate = !reduced && !data.profile.reducedMotion;
+  return <header className="workspace-header">
+    <div className="workspace-header-inner">
+      <a className="nw-logo" href={routeHref(areas.hoje)}><span className="nw-logo-icon"><Sparkles size={17} /></span>NowWork</a>
+      <nav className="workspace-primary" aria-label="Navegação principal">
+        {destinations.map(({ area, title, Icon }) => <a key={area} href={routeHref(areas[area])} aria-current={current === area ? 'page' : undefined}>
+          {current === area && <motion.span className="workspace-current" aria-hidden="true" layoutId={animate ? 'workspace-current' : undefined}
+            transition={springs.panel} />}
+          <Icon size={18} aria-hidden="true" /><span>{title}</span>
+        </a>)}
+      </nav>
+      <Toolbar className="workspace-actions">
+        <IconButton label="Buscar" onClick={search} aria-keyshortcuts="Control+K Meta+K"><Search size={19} /></IconButton>
+        <IconButton label="Configurações" onClick={settings}><Settings2 size={19} /></IconButton>
+      </Toolbar>
+    </div>
+  </header>;
 }
 
-export function WorkspaceSidebar({ current, open, settings }: NavigationProps) {
-  return <aside className="nw-sidebar">
-    <WorkspaceLogo onClick={() => open('home')} />
-    <nav className="ds-navigation" aria-label="Navegação principal">
-      <span className="ds-nav-heading">Espaço de estudos</span>
-      {primaryPages.map(({ id, title, Icon }) => <NavButton key={id} active={current === id} animation="workspace-navigation"
-        icon={<Icon size={18} />} onClick={() => open(id)}>{title}</NavButton>)}
-    </nav>
-    <nav className="ds-navigation ds-nav-secondary" aria-label="Ferramentas">
-      <span className="ds-nav-heading">Ferramentas</span>
-      {utilityPages.map(({ id, title, Icon }) => <NavButton key={id} active={current === id} animation="workspace-navigation"
-        icon={<Icon size={17} />} onClick={() => open(id)}>{title}</NavButton>)}
-    </nav>
-    <NavButton className="ds-nav-settings" icon={<Settings2 size={17} />} onClick={settings}>Configurações</NavButton>
-  </aside>;
-}
-
-export function MobileNavigation({ current, open, more }: Omit<NavigationProps, 'settings'> & { more: () => void }) {
-  return <nav className="nw-mobile-nav" aria-label="Navegação móvel">
-    {primaryPages.map(({ id, mobile, Icon }) => <NavButton key={id} active={current === id} animation="mobile-navigation"
-      icon={<Icon size={19} />} onClick={() => open(id)}>{mobile}</NavButton>)}
-    <NavButton active={utilityPages.some(({ id }) => id === current)} animation="mobile-navigation" icon={<Ellipsis size={19} />}
-      onClick={more}>Mais</NavButton>
+export function SectionNavigation({ label, links }: { label: string; links: readonly { label: string; href: string; active: boolean }[] }) {
+  const reduced = useReducedMotion();
+  const { data } = useApp();
+  const animate = !reduced && !data.profile.reducedMotion;
+  return <nav className="workspace-sections" aria-label={label}>
+    {links.map(({ label, href, active }) => <a key={href} href={href} aria-current={active ? 'page' : undefined}>
+      {label}{active && <motion.span aria-hidden="true" className="workspace-section-indicator" layoutId={animate ? 'workspace-section' : undefined}
+        transition={springs.panel} />}
+    </a>)}
   </nav>;
-}
-
-export function WorkspaceTools({ open, settings }: Pick<NavigationProps, 'open' | 'settings'>) {
-  return <div className="ds-navigation nw-tool-menu">{utilityPages.map(({ id, title, Icon }) =>
-    <Button key={id} variant="ghost" icon={<Icon size={18} />} onClick={() => open(id)}>{title}</Button>)}
-    <Button variant="ghost" icon={<Settings2 size={18} />} onClick={settings}>Configurações</Button>
-  </div>;
 }

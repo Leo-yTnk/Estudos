@@ -20,19 +20,11 @@ a { color: inherit; }
 h1,h2,h3,p { margin-top: 0; }
 h1,h2,h3 { color: var(--ink-strong); letter-spacing: -.037em; }
 p { line-height: 1.55; }
-.page-intro { margin-bottom: 9px; }
-.page-intro h1 { font-size: clamp(36px, 5.2vw, 52px); line-height: 1.12; margin: 12px 0 12px; letter-spacing: -.068em; font-weight: 700; }
-.page-intro h1 span { color: var(--secondary); }
-.page-intro p { color: var(--secondary); font-size: 15px; margin: 0; }
 .section-note { color: var(--tertiary); font-size: 12px; }
 .micro-label { color: var(--secondary); font-size: 12px; font-weight: 650; }
 .demo-pill { border: 1px dashed var(--line); background: transparent; }
 
 /* Agora */
-.hero-intro { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 19px 0 7px; }
-.hero-intro h1 { font-size: clamp(34px,5vw,51px); line-height: 1.12; letter-spacing: -.07em; margin: 10px 0; font-weight: 710; }
-.hero-subtitle { font-size: 15px; color: var(--secondary); margin: 0; }
-.hero-flower { width: 66px; height: 66px; border-radius: 23px; display: grid; place-items: center; color: var(--accent); background: var(--accent-soft); flex: 0 0 auto; transform: rotate(-9deg); }
 .assistant-card { padding: 23px 24px; display: flex; gap: 15px; align-items: flex-start; background: var(--surface-raised); }
 .assistant-avatar { flex: 0 0 36px; height: 36px; display: grid; place-items: center; color: var(--accent); background: var(--accent-soft); border-radius: 13px; }
 .assistant-name { font-size: 12px; color: var(--ink); font-weight: 760; margin: 2px 0 7px; }
@@ -218,9 +210,6 @@ p { line-height: 1.55; }
   .topbar-date,.brand-divider,.privacy-mark { display: none; }
   .app-main { width: calc(100% - 34px); margin-top: 18px; }
   .screen { gap: 18px; }
-  .hero-intro { padding: 10px 0 5px; }
-  .hero-intro h1 { font-size: clamp(32px,8vw,42px); }
-  .hero-flower { width: 54px; height: 54px; border-radius: 19px; }
   .assistant-card { padding: 19px; gap: 12px; }
   .energy-row { align-items: flex-start; flex-direction: column; gap: 12px; }
   .energy-segment { width: 100%; justify-content: stretch; }
@@ -236,7 +225,6 @@ p { line-height: 1.55; }
   .capture-card { padding: 19px 16px; }
   .capture-main { gap: 8px; }
   .capture-main .btn { padding: 12px 13px; }
-  .page-intro h1 { font-size: 39px; }
   .evolution-hero { padding: 23px; }
   .points-medallion { flex-basis: 72px; height: 72px; border-radius: 22px; }
   .points-medallion svg { width: 33px; }

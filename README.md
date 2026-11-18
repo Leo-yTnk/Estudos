@@ -17,7 +17,7 @@ Os dados ficam no navegador. Depois do primeiro acesso online, o service worker 
 - `src/styles/tokens.css` concentra cores, tipografia, espaçamento, raios e movimento para os dois temas.
 - `src/components/ui.tsx` e `src/styles/system.css` definem os componentes compartilhados, incluindo botões, superfícies, barras, grupos segmentados e navegação.
 - Regras de layout do espaço de estudos e da folha do editor ficam em `workspace.css` e `document.css`.
-- A lista de matérias tem busca própria. Cada matéria abre no resumo e expõe somente suas ferramentas.
+- A navegação tem quatro áreas: Hoje, Planejar, Matérias e Estudar. Planejar reúne tarefas, agenda e caixa de entrada. Estudar reúne foco e progresso. A lista de matérias tem busca própria, e abrir uma matéria leva direto ao caderno. A URL mantém a área, matéria e página selecionadas.
 
 ## Desenvolvimento
 

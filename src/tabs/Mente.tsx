@@ -4,7 +4,7 @@ import { Archive, Brain, ChevronDown, Inbox, Plus, Search, Sparkles } from 'luci
 import { useApp } from '../state/AppState';
 import { dueDays } from '../lib/engine';
 import { KINDS, type EntryKind } from '../types';
-import { Button, EmptyState, Eyebrow, SectionHeader, Surface } from '../components/ui';
+import { Button, EmptyState, SectionHeader, Surface } from '../components/ui';
 import { EntryFields, freshInput } from '../components/EntryFields';
 import { EntryCard } from '../components/EntryCard';
 
@@ -51,8 +51,6 @@ export function Mente({ selectedId }: { selectedId?: string }) {
     {kind:'worry',label:'Preocupação'}, {kind:'idea',label:'Ideia'},
   ];
   return <div className="screen mind-screen">
-    <header className="page-intro"><Eyebrow>DESOCUPE SUA MENTE</Eyebrow><h1>Coloque aqui.<br/><span>A gente organiza.</span></h1>
-      <p>Você não precisa guardar tudo na cabeça.</p></header>
     <Surface className="capture-card">
       <form onSubmit={create}>
         <div className="capture-label"><Sparkles size={16}/> Captura rápida</div>

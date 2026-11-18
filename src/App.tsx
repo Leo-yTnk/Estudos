@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { Check, ChevronRight, CircleHelp, Coffee, Download, Pencil, Plus, Search, ShieldCheck, Sparkles, Trash2, Upload, X } from 'lucide-react';
+import { Check, CircleHelp, Coffee, Download, Pencil, ShieldCheck, Sparkles, Trash2, Upload, X } from 'lucide-react';
 import { AppProvider, useApp } from './state/AppState';
 import { ElasticSheet } from './components/ElasticSheet';
-import { Button, IconButton, PageHeading, Segment, Stack, Toolbar } from './components/ui';
-import { MobileNavigation, WorkspaceLogo, WorkspaceSidebar, WorkspaceTools, workspacePages, type WorkspacePage } from './components/WorkspaceNavigation';
+import { Button, IconButton, PageHeading, Stack } from './components/ui';
+import { SectionNavigation, WorkspaceNavigation } from './components/WorkspaceNavigation';
+import { areas, parseRoute, planningViews, routeHref, studyViews, subjectViews, type Route, type SubjectView } from './lib/navigation';
 import { Agora } from './tabs/Agora';
 import { Mente } from './tabs/Mente';
 import { Evolucao } from './tabs/Evolucao';
@@ -12,16 +13,26 @@ import { validateData } from './lib/storage';
 import { springs } from './lib/motion';
 import type { Subject, Theme } from './types';
 import { Dashboard } from './study/Dashboard';
-import { Subjects, SubjectOverview, SubjectMark, subjectTools, type SubjectTool } from './study/Subjects';
+import { Subjects, SubjectRail, SubjectMark } from './study/Subjects';
 import { Tasks, Week } from './study/Planner';
 import { Notebook } from './study/Notebook';
 import { Review } from './study/Review';
 import { WorkspaceSearch, TaskForm, SubjectForm } from './study/WorkspacePanels';
 
-const subjectTabs = [{ id: 'overview', label: 'Resumo' }, ...subjectTools] as const;
-type SubjectTab = SubjectTool | 'overview';
-type Page = { id: WorkspacePage; entryId?: string } | { id: 'subject'; subjectId: string; tab: SubjectTab; noteId?: string };
-type Sheet = { kind: 'settings' | 'break' | 'search' | 'tools' } | { kind: 'task'; subjectId?: string; dueAt?: string | null } | { kind: 'subject'; subject?: Subject };
+type Sheet = { kind: 'settings' | 'break' | 'search' } | { kind: 'task'; subjectId?: string; dueAt?: string | null } | { kind: 'subject'; subject?: Subject };
+
+function useWorkspaceRoute() {
+  const [hash, setHash] = useState(() => window.location.hash);
+  const route = parseRoute(hash);
+  useEffect(() => {
+    const sync = () => setHash(window.location.hash);
+    window.addEventListener('hashchange', sync);
+    return () => window.removeEventListener('hashchange', sync);
+  }, []);
+  useEffect(() => { window.scrollTo(0, 0); }, [hash]);
+  const open = (next: Route) => { window.location.hash = routeHref(next); };
+  return { route, open };
+}
 
 function Settings() {
   const app = useApp();
@@ -89,16 +100,16 @@ function Settings() {
 
 function AppContent() {
   const app = useApp();
-  const [page, setPage] = useState<Page>({ id: 'home' });
+  const { route, open } = useWorkspaceRoute();
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const systemReduced = useReducedMotion();
   const reduce = !!systemReduced || app.data.profile.reducedMotion;
-  const subject = page.id === 'subject' ? app.data.subjects.find(({ id }) => id === page.subjectId) : undefined;
-  const subjectPage = (id: string, tab: SubjectTab = 'overview', noteId?: string) => setPage({ id: 'subject', subjectId: id, tab, noteId });
+  const subject = route.area === 'materias' ? app.data.subjects.find(({ id }) => id === route.subjectId) : undefined;
+  const subjectPage = (id: string, view: SubjectView = 'caderno', noteId?: string) => open({ area: 'materias', subjectId: id, view, noteId });
   const newTask = (dueAt?: string | null) => setSheet({ kind: 'task', subjectId: subject?.id, dueAt });
   const openTask = (id: string) => {
     const entry = app.data.entries.find((item) => item.id === id);
-    setPage({ id: entry?.kind === 'idea' || entry?.kind === 'worry' ? 'mind' : 'tasks', entryId: id });
+    open({ area: 'planejar', view: entry?.kind === 'idea' || entry?.kind === 'worry' ? 'entrada' : 'tarefas', entryId: id });
   };
   const close = () => setSheet(null);
   useEffect(() => {
@@ -112,81 +123,64 @@ function AppContent() {
     return () => window.removeEventListener('keydown', onKey);
   }, [sheet]);
   if (!app.ready) return <div className="loading-shell"><div className="nw-logo"><span className="nw-logo-icon"><Sparkles size={18} /></span>NowWork</div><p>Preparando seu espaço…</p></div>;
-  const workspacePage = page.id === 'subject' ? 'subjects' : page.id;
-  const section = page.id === 'subject' ? subject?.title || 'Matérias' : workspacePages.find(({ id }) => id === page.id)?.title || '';
-  const open = (id: WorkspacePage) => setPage({ id });
   const createSubject = () => setSheet({ kind: 'subject' });
-  const settings = () => setSheet({ kind: 'settings' });
-  const descriptions = {
-    tasks: 'Organize entregas, exercícios e compromissos.',
-    calendar: 'Veja os prazos e planeje uma semana de cada vez.',
-  };
   const sheetTitles = { settings: 'Configurações', break: 'Uma pausa para respirar', search: 'Buscar no NowWork',
-    tools: 'Mais ferramentas', task: 'Novo registro', subject: sheet?.kind === 'subject' && sheet.subject ? 'Editar matéria' : 'Nova matéria' };
+    task: 'Novo registro', subject: sheet?.kind === 'subject' && sheet.subject ? 'Editar matéria' : 'Nova matéria' };
+  const routeKey = route.area === 'materias' ? route.subjectId || route.area : route.area;
   return <div className="nw-shell">
-    <WorkspaceSidebar current={workspacePage} open={open} settings={settings} />
-    <div className="nw-content">
-      <header className="nw-header">
-        <nav className="nw-breadcrumb" aria-label="Caminho atual">
-          <Button size="sm" variant="ghost" onClick={() => open('home')}>Estudos</Button>
-          {page.id !== 'home' && <><ChevronRight size={13} aria-hidden="true" />
-            {subject ? <><Button size="sm" variant="ghost" onClick={() => open('subjects')}>Matérias</Button><ChevronRight size={13} aria-hidden="true" /></> : null}
-            <strong>{section}</strong></>}
-        </nav>
-        <WorkspaceLogo mobile onClick={() => open('home')} />
-        <Toolbar>
-          <Button size="sm" variant="ghost" className="nw-search" aria-label="Buscar" onClick={() => setSheet({ kind: 'search' })}>
-            <Search size={17} /><span>Buscar</span><kbd>Ctrl K</kbd></Button>
-          {workspacePage !== 'subjects' && <Button aria-label="Novo registro" className="nw-new" variant="primary" icon={<Plus size={17} />} onClick={() => newTask()}>
-            Novo<span className="nw-new-extra"> registro</span></Button>}
-        </Toolbar>
-      </header>
-      <main className="nw-main" id="main-content">
-        <motion.div key={page.id === 'subject' ? page.subjectId : page.id}
-          initial={reduce ? false : { opacity: 0, y: 7 }} animate={{ opacity: 1, y: 0 }}
-          transition={reduce ? { duration: 0 } : { duration: .2 }}>
-          {page.id === 'home' && <Dashboard subject={subjectPage} subjects={() => open('subjects')} newSubject={createSubject}
-            focus={() => open('focus')} add={newTask} openTask={openTask} />}
-          {(page.id === 'subjects' || (page.id === 'subject' && !subject)) && <Subjects open={subjectPage} create={createSubject} />}
-          {(page.id === 'tasks' || page.id === 'calendar') && <Stack className="workspace-page">
-            <PageHeading title={section} description={descriptions[page.id]} />
-            {page.id === 'tasks' ? <Tasks key={page.entryId || 'all'} onlyId={page.entryId} onAdd={() => newTask()} /> : <Week onAdd={newTask} />}
-          </Stack>}
-          {page.id === 'subject' && subject && <Stack className="workspace-page">
-            <Toolbar label="Caminho da matéria" className="subject-path">
-              <Button size="sm" variant="ghost" onClick={() => open('subjects')}>Matérias</Button>
-              <ChevronRight size={14} aria-hidden="true" /><span>{subject.title}</span>
-            </Toolbar>
-            <PageHeading title={subject.title} icon={<SubjectMark subject={subject} />}
-              action={<IconButton label="Editar matéria" onClick={() => setSheet({ kind: 'subject', subject })}><Pencil size={18} /></IconButton>} />
-            <Segment label="Ferramentas da matéria" className="subject-tabs" options={subjectTabs} value={page.tab}
-              onChange={(tab) => subjectPage(subject.id, tab)} />
-            {page.tab === 'overview' && <SubjectOverview subject={subject} select={(tab) => subjectPage(subject.id, tab)} />}
-            {page.tab === 'tasks' && <Tasks key={subject.id} subjectId={subject.id} onAdd={() => newTask()} />}
-            {page.tab === 'notes' && <Notebook key={subject.id} subjectId={subject.id} noteId={page.noteId} open={(id) => subjectPage(subject.id, 'notes', id)} />}
-            {page.tab === 'review' && <Review key={subject.id} subjectId={subject.id} />}
-          </Stack>}
-          {page.id === 'focus' && <Agora onMind={() => open('mind')} onBreak={() => setSheet({ kind: 'break' })} />}
-          {page.id === 'mind' && <Mente key={page.entryId || 'all'} selectedId={page.entryId} />}
-          {page.id === 'evolution' && <Evolucao />}
-        </motion.div>
-      </main>
-    </div>
-    <MobileNavigation current={workspacePage} open={open} more={() => setSheet({ kind: 'tools' })} />
+    <a className="workspace-skip" href="#main-content" onClick={(event) => {
+      event.preventDefault();
+      document.getElementById('main-content')?.focus();
+    }}>Ir para o conteúdo</a>
+    <WorkspaceNavigation current={route.area} search={() => setSheet({ kind: 'search' })} settings={() => setSheet({ kind: 'settings' })} />
+    <main className="nw-main" id="main-content" tabIndex={-1}>
+      <motion.div key={routeKey} initial={reduce ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+        transition={reduce ? { duration: 0 } : { duration: .2 }}>
+        {route.area === 'hoje' && <Dashboard subject={subjectPage} subjects={() => open(areas.materias)} newSubject={createSubject}
+          focus={() => open(areas.estudar)} add={newTask} openTask={openTask} />}
+        {route.area === 'materias' && (!subject
+          ? <Subjects open={subjectPage} create={createSubject} />
+          : <div className="subject-workspace">
+            <SubjectRail current={subject.id} />
+            <Stack className="workspace-page">
+              <PageHeading title={subject.title} icon={<SubjectMark subject={subject} />}
+                action={<IconButton label="Editar matéria" onClick={() => setSheet({ kind: 'subject', subject })}><Pencil size={18} /></IconButton>} />
+              <SectionNavigation label="Nesta matéria" links={subjectViews.map(({ id, label }) => ({ label, active: route.view === id,
+                href: routeHref({ area: 'materias', subjectId: subject.id, view: id }) }))} />
+              {route.view === 'tarefas' && <Tasks key={subject.id} subjectId={subject.id} onAdd={() => newTask()} />}
+              {route.view === 'caderno' && <Notebook key={subject.id} subjectId={subject.id} noteId={route.noteId} open={(id) => subjectPage(subject.id, 'caderno', id)} />}
+              {route.view === 'revisao' && <Review key={subject.id} subjectId={subject.id} />}
+            </Stack>
+          </div>)}
+        {route.area === 'planejar' && <Stack className="workspace-page">
+          <PageHeading title="Planejar" />
+          <SectionNavigation label="Planejamento" links={planningViews.map(({ id, label }) =>
+            ({ label, active: route.view === id, href: routeHref({ area: 'planejar', view: id }) }))} />
+          {route.view === 'tarefas' && <Tasks key={route.entryId || 'all'} onlyId={route.entryId} onAdd={() => newTask()} />}
+          {route.view === 'agenda' && <Week onAdd={newTask} />}
+          {route.view === 'entrada' && <Mente key={route.entryId || 'all'} selectedId={route.entryId} />}
+        </Stack>}
+        {route.area === 'estudar' && <Stack className="workspace-page">
+          <PageHeading title="Estudar" />
+          <SectionNavigation label="Estudo" links={studyViews.map(({ id, label }) =>
+            ({ label, active: route.view === id, href: routeHref({ area: 'estudar', view: id }) }))} />
+          {route.view === 'foco' ? <Agora onMind={() => open({ area: 'planejar', view: 'entrada' })} onBreak={() => setSheet({ kind: 'break' })} /> : <Evolucao />}
+        </Stack>}
+      </motion.div>
+    </main>
 
     <AnimatePresence>{sheet && <ElasticSheet key={sheet.kind} title={sheetTitles[sheet.kind]} onClose={close}>
       {(dismiss: () => void) => <>
         {sheet.kind === 'settings' && <Settings />}
-        {sheet.kind === 'tools' && <WorkspaceTools open={(id) => { open(id); dismiss(); }} settings={settings} />}
         {sheet.kind === 'task' && <TaskForm subjectId={sheet.subjectId} dueAt={sheet.dueAt} close={dismiss} />}
         {sheet.kind === 'subject' && <SubjectForm subject={sheet.subject} close={dismiss}
           save={(value) => { app.saveSubject(value); subjectPage(value.id); dismiss(); }}
-          remove={(id) => { app.removeSubject(id); setPage({ id: 'home' }); dismiss(); }} />}
+          remove={(id) => { app.removeSubject(id); open(areas.materias); dismiss(); }} />}
         {sheet.kind === 'search' && <WorkspaceSearch subject={(id) => { subjectPage(id); dismiss(); }}
-          note={(sid, id) => { subjectPage(sid, 'notes', id); dismiss(); }} entry={(id) => { openTask(id); dismiss(); }} />}
+          note={(sid, id) => { subjectPage(sid, 'caderno', id); dismiss(); }} entry={(id) => { openTask(id); dismiss(); }} />}
         {sheet.kind === 'break' && <div className="break-sheet-content">
           <div className="break-illustration"><Coffee size={32} strokeWidth={1.5} /></div>
-          <h3>Escolha um intervalo</h3><p>Quando terminar, a pausa será registrada na Evolução.</p>
+          <h3>Escolha um intervalo</h3><p>Quando terminar, a pausa será registrada em Progresso.</p>
           <div className="break-options">{[5, 10, 15].map((minutes) => <Button key={minutes} onClick={() => { app.startBreak(minutes); dismiss(); }}>{minutes} min</Button>)}</div>
           <p className="break-footnote"><CircleHelp size={14} /> Você pode encerrar a pausa pelo modo Foco.</p>
         </div>}

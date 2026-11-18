@@ -20,8 +20,8 @@ export function Dashboard({ subject, subjects, newSubject, focus, add, openTask 
   return <div className="nw-stack nw-dashboard">
     <div className="nw-welcome">
       <div className="nw-date"><CalendarDays size={15} />{date}</div>
-      <h1>{data.profile.name.trim() ? 'Olá, ' + data.profile.name.trim() : 'Seu espaço de estudos.'}</h1>
-      <p>Organize as entregas, anote o que aprendeu e escolha o próximo passo.</p>
+      <h1>Hoje</h1>
+      <p>{data.profile.name.trim() ? 'Olá, ' + data.profile.name.trim() + '. Veja suas próximas entregas e matérias.' : 'Acompanhe suas entregas e retome seus estudos.'}</p>
     </div>
     <div className="nw-stats">
       {[

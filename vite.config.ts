@@ -1,8 +1,70 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig(({ command }) => ({
-  plugins: [react()],
-  base: command === 'serve' ? '/' : '/Estudos/',
-  build: { outDir: 'dist' },
+function offlineWorkspace(): Plugin {
+  return {
+    name: 'nowwork-offline',
+    apply: 'build',
+    generateBundle: {
+      order: 'post',
+      handler(_options, bundle) {
+        const index = bundle['index.html'];
+        if (!index || index.type !== 'asset') this.error('The offline workspace requires index.html.');
+        const html = String(index.source);
+        const files = Object.keys(bundle).filter((file) => /\.(js|css|woff2)$/.test(file)).sort();
+        // Vite fingerprints every compiled resource. A new build gets a separate cache.
+        const revision = files.join('|') + html;
+        let hash = 2166136261;
+        for (const character of revision) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619);
+        this.emitFile({ type: 'asset', fileName: 'offline.js', source: `
+const scope = new URL(self.registration.scope);
+const prefix = 'nowwork-' + scope.pathname + '-';
+const version = prefix + ${JSON.stringify((hash >>> 0).toString(36))};
+const appShell = new URL('index.html', scope).href;
+const urls = ${JSON.stringify(files)}.map(file => new URL(file, scope).href);
+const assets = new Set(urls);
+
+self.addEventListener('install', event => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(version);
+    await cache.addAll(urls.map(url => new Request(url, { cache: 'reload' })));
+    await cache.put(appShell, new Response(${JSON.stringify(html)}, { headers: { 'Content-Type': 'text/html; charset=utf-8' } }));
+  })());
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(key => key.startsWith(prefix) && key !== version).map(key => caches.delete(key)));
+    await self.clients.claim();
+  })());
+});
+
+self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+  if (url.origin !== scope.origin || !url.pathname.startsWith(scope.pathname)) return;
+  if (event.request.mode === 'navigate') {
+    event.respondWith(fetch(event.request).catch(async () => (await (await caches.open(version)).match(appShell)) || Response.error()));
+  } else if (assets.has(url.href)) {
+    event.respondWith((async () => (await (await caches.open(version)).match(event.request)) || fetch(event.request))());
+  }
+});
+` });
+      },
+    },
+  };
+}
+
+export default defineConfig(({ command, isPreview }) => ({
+  plugins: [react(), offlineWorkspace()],
+  base: command === 'serve' && !isPreview ? '/' : '/Estudos/',
+  build: {
+    outDir: 'dist',
+    rolldownOptions: {
+      output: {
+        codeSplitting: { groups: [{ name: 'editor-engine', test: /node_modules[\\/](?:@tiptap[\\/]|prosemirror-)/ }] },
+      },
+    },
+  },
 }));

@@ -14,7 +14,7 @@ export function ElasticSheet({ title, children, onClose }: { title: string; chil
   const drag = useRef<Drag | null>(null);
   const closing = useRef(false);
   const getLimits = () => {
-    const max = Math.max(260, window.innerHeight - 18);
+    const max = Math.max(220, window.innerHeight - 96);
     return { min: Math.min(max, Math.max(310, Math.min(530, window.innerHeight * 0.68))), max };
   };
   const to = (target: number, velocity = 0, finish?: () => void) => {

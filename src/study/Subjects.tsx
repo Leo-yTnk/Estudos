@@ -1,22 +1,15 @@
 import { useState } from 'react';
-import { ArrowRight, BookOpen, Layers, LibraryBig, ListTodo, Plus, Search } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, LibraryBig, Plus, Search } from 'lucide-react';
 import { Button, EmptyState, PageHeading, Stack, Surface } from '../components/ui';
 import { useApp } from '../state/AppState';
+import { areas, routeHref } from '../lib/navigation';
 import type { Subject } from '../types';
-
-export const subjectTools = [
-  { id: 'tasks', label: 'Tarefas', Icon: ListTodo },
-  { id: 'notes', label: 'Caderno', Icon: BookOpen },
-  { id: 'review', label: 'Revisão', Icon: Layers },
-] as const;
-export type SubjectTool = typeof subjectTools[number]['id'];
 
 function useSubjectCounts(id: string) {
   const { data } = useApp();
   return {
     tasks: data.entries.filter((entry) => entry.subjectId === id && entry.status === 'active' && ['task', 'event'].includes(entry.kind)).length,
     notes: data.notes.filter((note) => note.subjectId === id).length,
-    review: data.flashcards.filter((card) => card.subjectId === id).length,
   };
 }
 
@@ -38,18 +31,29 @@ export function SubjectCard({ subject, open }: { subject: Subject; open: () => v
   </Surface>;
 }
 
-export function Subjects({ open, create }: { open: (id: string) => void; create: () => void }) {
-  const { data } = useApp();
+function useSubjectFilter() {
+  const { subjects } = useApp().data;
   const [query, setQuery] = useState('');
   const normalize = (value: string) => value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
-  const filtered = data.subjects.filter((item) => normalize(item.title).includes(normalize(query.trim())))
+  const term = normalize(query.trim());
+  const filtered = subjects.filter((item) => normalize(item.title).includes(term))
     .sort((a, b) => a.title.localeCompare(b.title, 'pt-BR'));
+  return { subjects, filtered, query, setQuery };
+}
+
+function SubjectFilter({ query, change }: { query: string; change: (value: string) => void }) {
+  return <label className="ds-search"><Search size={17} aria-hidden="true" />
+    <input className="ds-input" type="search" placeholder="Filtrar matérias" aria-label="Filtrar matérias" value={query}
+      onChange={(event) => change(event.target.value)} />
+  </label>;
+}
+
+export function Subjects({ open, create }: { open: (id: string) => void; create: () => void }) {
+  const { subjects, filtered, query, setQuery } = useSubjectFilter();
   return <Stack className="workspace-page">
-    <PageHeading title="Matérias" description="Um espaço para as tarefas, anotações e revisões de cada disciplina."
+    <PageHeading title="Matérias" description="Abra uma matéria para consultar seu caderno, tarefas e revisões."
       action={<Button variant="primary" icon={<Plus size={17} />} onClick={create}>Nova matéria</Button>} />
-    {!!data.subjects.length && <label className="ds-search"><Search size={18} />
-      <input className="ds-input" type="search" placeholder="Filtrar matérias" aria-label="Filtrar matérias" value={query} onChange={(event) => setQuery(event.target.value)} />
-    </label>}
+    {!!subjects.length && <SubjectFilter query={query} change={setQuery} />}
     {filtered.length ? <div className="subject-grid">{filtered.map((subject) =>
       <SubjectCard key={subject.id} subject={subject} open={() => open(subject.id)} />
     )}</div> : <Surface><EmptyState icon={<LibraryBig size={23} />} title={query ? 'Nenhuma matéria encontrada' : 'Nenhuma matéria cadastrada'}
@@ -57,18 +61,19 @@ export function Subjects({ open, create }: { open: (id: string) => void; create:
   </Stack>;
 }
 
-export function SubjectOverview({ subject, select }: { subject: Subject; select: (tool: SubjectTool) => void }) {
-  const counts = useSubjectCounts(subject.id);
-  const labels = {
-    tasks: countLabel(counts.tasks, 'pendência', 'pendências'),
-    notes: countLabel(counts.notes, 'página', 'páginas'),
-    review: countLabel(counts.review, 'cartão', 'cartões'),
-  };
-  return <div className="subject-grid">{subjectTools.map(({ id, label, Icon }) =>
-    <Surface className="subject-card" key={id}>
-      <Button className="ds-card-button" variant="ghost" onClick={() => select(id)}>
-        <span className={'nw-subject-mark tone-' + subject.color}><Icon size={19} /></span>
-        <strong>{label}</strong><span className="nw-muted">{labels[id]}</span><ArrowRight size={16} className="ds-card-arrow" />
-      </Button>
-    </Surface>)}</div>;
+export function SubjectRail({ current }: { current: string }) {
+  const { filtered, query, setQuery } = useSubjectFilter();
+  return <aside className="subject-rail">
+    <a className="subject-directory-link" href={routeHref(areas.materias)}><ArrowLeft size={16} aria-hidden="true" />Todas as matérias</a>
+    <div className="subject-rail-content">
+      <SubjectFilter query={query} change={setQuery} />
+      <nav aria-label="Trocar de matéria" className="subject-switcher">
+        {filtered.map((subject) => <a key={subject.id} href={routeHref({ area: 'materias', subjectId: subject.id, view: 'caderno' })}
+          aria-current={current === subject.id ? 'page' : undefined}>
+          <span className={'subject-dot tone-' + subject.color} aria-hidden="true" />{subject.title}
+        </a>)}
+        {!filtered.length && <span className="nw-muted" role="status">Nenhuma matéria encontrada.</span>}
+      </nav>
+    </div>
+  </aside>;
 }

@@ -1,5 +1,8 @@
 import { getSchema, type JSONContent } from '@tiptap/core';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
+import { TableKit } from '@tiptap/extension-table';
+import Highlight from '@tiptap/extension-highlight';
+import TextAlign from '@tiptap/extension-text-align';
 import StarterKit from '@tiptap/starter-kit';
 import type { NoteBlock, StudyNote } from '../types';
 
@@ -15,6 +18,9 @@ export const documentExtensions = [
     heading: { levels: [2, 3] },
     link: { openOnClick: false, defaultProtocol: 'https', isAllowedUri: (url) => !!safeLink(url) },
   }),
+  TableKit.configure({ table: { renderWrapper: true } }),
+  Highlight,
+  TextAlign.configure({ types: ['paragraph', 'heading'], alignments: ['left', 'center', 'right'] }),
   TaskList,
   TaskItem.configure({ nested: true }),
 ];

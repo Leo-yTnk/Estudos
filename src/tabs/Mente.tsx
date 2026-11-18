@@ -10,12 +10,12 @@ import { EntryCard } from '../components/EntryCard';
 
 type Filter = 'active' | 'all' | 'task' | 'event' | 'worry' | 'idea' | 'done' | 'archived';
 
-export function Mente() {
+export function Mente({ selectedId }: { selectedId?: string }) {
   const app = useApp();
   const { data } = app;
   const [draft, setDraft] = useState(freshInput);
   const [details, setDetails] = useState(false);
-  const [filter, setFilter] = useState<Filter>('active');
+  const [filter, setFilter] = useState<Filter>(selectedId ? 'all' : 'active');
   const [search, setSearch] = useState('');
   const [limit, setLimit] = useState(12);
   const reduceSystem = useReducedMotion();
@@ -37,12 +37,13 @@ export function Mente() {
         : filter === 'done' || filter === 'archived' ? item.status === filter : item.kind === filter && item.status !== 'archived')
       .filter((item) => (item.title + ' ' + item.note).toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')))
       .sort((a, b) => {
+        if (a.id === selectedId || b.id === selectedId) return a.id === selectedId ? -1 : 1;
         const status = ({active:0,done:1,archived:2} as const);
         return status[a.status] - status[b.status] ||
           (a.dueAt ? Date.parse(a.dueAt) : Infinity) - (b.dueAt ? Date.parse(b.dueAt) : Infinity) ||
           b.createdAt.localeCompare(a.createdAt);
       });
-  }, [data.entries, filter, search]);
+  }, [data.entries, filter, search, selectedId]);
   const expiring = data.entries.filter((item) => item.status === 'active' && item.dueAt &&
     (dueDays(item) ?? Infinity) <= 2).length;
   const kindIcons: {kind: EntryKind; label: string}[] = [
@@ -87,7 +88,7 @@ export function Mente() {
       </select></div>
     </div>
     <div className="record-list">
-      {entries.length ? entries.slice(0,limit).map((entry) => <EntryCard key={entry.id} entry={entry}/>) :
+      {entries.length ? entries.slice(0,limit).map((entry) => <EntryCard key={entry.id} entry={entry} initiallyExpanded={entry.id === selectedId}/>) :
         <Surface><EmptyState icon={filter === 'archived' ? <Archive size={23}/> : data.entries.length ? <Search size={23}/> : <Brain size={23}/>}
           title={data.entries.length ? 'Nenhum registro neste filtro.' : 'Uma mente mais leve começa aqui.'}
           description={data.entries.length ? 'Tente outro filtro ou uma busca diferente.' : 'Anote uma tarefa, um pensamento ou uma ideia no campo acima. Nenhuma organização complexa é necessária.'}/></Surface>}

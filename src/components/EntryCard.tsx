@@ -80,7 +80,7 @@ export function EntryCard({ entry }: { entry: Entry }) {
               {entry.status === 'active' && <Button size="sm" variant="primary" icon={<Check size={15}/>} onClick={() => app.completeEntry(entry.id)}>{entry.kind === 'worry' ? 'Resolvida' : 'Concluir'}</Button>}
               {entry.status === 'active' && entry.kind === 'task' && <Button size="sm" icon={<RotateCcw size={14}/>} onClick={() => app.postponeEntry(entry.id)}>Adiar 1 dia</Button>}
               <Button size="sm" variant="ghost" icon={<Pencil size={15}/>} onClick={() => setEditing(true)}>Editar</Button>
-              {entry.status !== 'archived' && <Button size="sm" variant="ghost" icon={<Archive size={15}/>} onClick={() => app.archiveEntry(entry.id)}>Arquivar</Button>}
+              {entry.status !== 'archived' ? <Button size="sm" variant="ghost" icon={<Archive size={15}/>} onClick={() => app.archiveEntry(entry.id)}>Arquivar</Button> : <Button size="sm" variant="ghost" icon={<RotateCcw size={15}/>} onClick={() => app.restoreEntry(entry.id)}>Restaurar</Button>}
               <Button size="sm" variant="danger" icon={<Trash2 size={15}/>} onClick={() => app.deleteEntry(entry.id)}>Excluir</Button>
             </div>
           </>}

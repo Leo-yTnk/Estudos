@@ -6,7 +6,7 @@ import { useApp } from '../state/AppState';
 
 interface Drag { id: number; y: number; height: number; lastY: number; lastTime: number; velocity: number; moved: boolean }
 
-export function ElasticSheet({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
+export function ElasticSheet({ title, children, onClose }: { title: string; children: ReactNode | ((dismiss: () => void) => ReactNode); onClose: () => void }) {
   const { data } = useApp();
   const systemReduced = useReducedMotion();
   const reduce = !!systemReduced || data.profile.reducedMotion;
@@ -65,7 +65,7 @@ export function ElasticSheet({ title, children, onClose }: { title: string; chil
     if (!state || state.id !== event.pointerId) return;
     drag.current = null;
     const { min, max } = getLimits();
-    if (height.get() < min - 75 || (state.moved && state.velocity < -650 && height.get() < min + 30)) return close();
+    if (height.get() < min - 36 || (state.moved && state.velocity < -650 && height.get() < min + 30)) return close();
     const expanded = height.get() > min + (max - min) * 0.35 || (state.moved && state.velocity > 650);
     to(expanded ? max : min, state.velocity);
   };
@@ -80,7 +80,7 @@ export function ElasticSheet({ title, children, onClose }: { title: string; chil
         <GripHorizontal size={26} strokeWidth={1.6} />
       </div>
       <div className="sheet-head"><h2>{title}</h2><button className="icon-button" type="button" aria-label="Fechar painel" onClick={close}><X size={19}/></button></div>
-      <div className="sheet-scroll">{children}</div>
+      <div className="sheet-scroll">{typeof children === 'function' ? children(close) : children}</div>
     </motion.section>
   </div>;
 }

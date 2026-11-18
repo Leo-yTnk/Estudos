@@ -18,6 +18,7 @@ interface AppContextValue {
   completeEntry: (id: string) => void;
   postponeEntry: (id: string) => void;
   archiveEntry: (id: string) => void;
+  restoreEntry: (id: string) => void;
   deleteEntry: (id: string) => void;
   undoDelete: () => void;
   divideEntry: (id: string) => void;
@@ -131,6 +132,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setData((d) => ({ ...d, entries: d.entries.map((e) => e.id === id ? { ...e, status: 'archived', updatedAt: stamped() } : e) }));
     notify('Registro arquivado.');
   };
+  const restoreEntry = (id: string) => {
+    setData((d) => ({ ...d, entries: d.entries.map((e) => e.id === id && e.status === 'archived' ? { ...e, status: e.completedAt ? 'done' : 'active', updatedAt: stamped() } : e) }));
+    notify('Registro restaurado.');
+  };
   const deleteEntry = (id: string) => {
     setData((d) => {
       const index = d.entries.findIndex((e) => e.id === id);
@@ -159,7 +164,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .map((title) => ({ id: uid(), title, done: false, awarded: false }));
       return { ...e, steps, updatedAt: stamped() };
     }) }));
-    notify('Dividida em três passos editáveis no sentido de poder adicionar outros.');
+    notify('Dividida em três passos. Você pode acrescentar outros.');
   };
   const addStep = (id: string, title: string) => {
     const clean = title.trim().slice(0, 160);
@@ -236,12 +241,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     notify('Recompensa resgatada. Aproveite sem pressa!');
   };
   const addDemo = () => { setData((d) => withDemo(d)); notify('Exemplos adicionados e identificados.'); };
-  const removeDemo = () => { setData((d) => ({ ...d, entries: d.entries.filter((e) => e.source !== 'demo') })); notify('Registros de demonstração removidos.'); };
+  const removeDemo = () => { setData((d) => ({ ...d, entries: d.entries.filter((e) => e.source !== 'demo'), focus: d.focus && d.entries.some((e) => e.id === d.focus?.entryId && e.source === 'demo') ? null : d.focus })); notify('Registros de demonstração removidos.'); };
   const restore = (next: AppData) => { setData(next); notify('Backup importado com sucesso.'); };
   const clearAll = () => { setData(emptyData()); deletedRef.current = null; notify('Dados locais reiniciados.'); };
 
   return <Context.Provider value={{ data, ready, toast, dismissToast, notify, updateProfile, addEntry, editEntry,
-    completeEntry, postponeEntry, archiveEntry, deleteEntry, undoDelete, divideEntry, addStep, toggleStep,
+    completeEntry, postponeEntry, archiveEntry, restoreEntry, deleteEntry, undoDelete, divideEntry, addStep, toggleStep,
     startFocus, finishFocus, startBreak, finishBreak, addReward, deleteReward, redeemReward, addDemo,
     removeDemo, restore, clearAll }}>
     {children}

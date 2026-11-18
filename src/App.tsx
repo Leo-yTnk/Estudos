@@ -119,11 +119,11 @@ function AppContent() {
     </nav>
 
     <AnimatePresence>{sheet && <ElasticSheet key={sheet} title={sheet === 'settings' ? 'Seu espaço' : 'Uma pausa para respirar'} onClose={() => setSheet(null)}>
-      {sheet === 'settings' ? <Settings/> : <div className="break-sheet-content">
+      {sheet === 'settings' ? <Settings/> : (dismiss: () => void) => <div className="break-sheet-content">
         <div className="break-illustration"><Coffee size={32} strokeWidth={1.5}/></div>
         <h3>Você não precisa fazer tudo agora.</h3><p>Escolha um intervalo. Quando acabar, sua pausa será registrada na Evolução, sem gastar pontos.</p>
         <div className="break-options">{[5,10,15].map((minutes) => <Button key={minutes} variant="secondary" size="lg"
-          onClick={() => {app.startBreak(minutes);setSheet(null);}}>{minutes} minutos</Button>)}</div>
+          onClick={() => {app.startBreak(minutes);dismiss();}}>{minutes} minutos</Button>)}</div>
         <p className="break-footnote"><CircleHelp size={14}/> Você pode encerrar a pausa a qualquer momento na aba Agora.</p>
       </div>}
     </ElasticSheet>}</AnimatePresence>

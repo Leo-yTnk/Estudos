@@ -5,6 +5,7 @@ import './styles/tokens.css';
 import './styles/app.css';
 import './styles/system.css';
 import './styles/workspace.css';
+import './styles/navigation.css';
 import './styles/document.css';
 
 createRoot(document.getElementById('root')!).render(

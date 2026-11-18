@@ -1,6 +1,7 @@
-import { emptyData } from '../types';
+import { BLOCK_TYPES, SUBJECT_COLORS, emptyData, uid } from '../types';
 import type { AppData, Entry, Activity, Reward } from '../types';
 
+// Preserve the original keys for data already saved under the same GitHub Pages origin.
 const DB_NAME = 'brisa-app';
 const STORE = 'snapshots';
 const KEY = 'current';
@@ -25,12 +26,36 @@ export function validateData(value: unknown): AppData {
     throw new Error('Formato de backup não reconhecido (versão 1).');
   }
   if (obj.entries.length > 3000 || obj.activity.length > 20000 || obj.rewards.length > 1000) throw new Error('Backup acima do limite de segurança.');
+  const subjects = Array.isArray(obj.subjects) ? obj.subjects.slice(0, 200).filter(
+    (item) => item && typeof item.id === 'string' && typeof item.title === 'string' && SUBJECT_COLORS.includes(item.color),
+  ).map((item) => ({ id: item.id, title: item.title.slice(0, 60), color: item.color })) : emptyData().subjects;
+  const hasSubject = (id: string) => subjects.some((item) => item.id === id);
+  const notes = Array.isArray(obj.notes) ? obj.notes.slice(0, 2000).filter(
+    (note) => note && hasSubject(note.subjectId) && typeof note.title === 'string' && Array.isArray(note.blocks),
+  ).map((note) => ({
+    id: String(note.id || uid()), subjectId: note.subjectId, title: note.title.slice(0, 150),
+    updatedAt: String(note.updatedAt || new Date().toISOString()),
+    blocks: note.blocks.slice(0, 250).filter(
+      (block) => block && BLOCK_TYPES.includes(block.type) && typeof block.text === 'string',
+    ).map((block) => ({
+      id: String(block.id || uid()), type: block.type, text: block.text.slice(0, 12000),
+      checked: !!block.checked, url: typeof block.url === 'string' ? block.url.slice(0, 2000) : undefined,
+    })),
+  })) : [];
+  const flashcards = Array.isArray(obj.flashcards) ? obj.flashcards.slice(0, 3000).filter(
+    (card) => card && hasSubject(card.subjectId) && typeof card.front === 'string' && typeof card.back === 'string',
+  ).map((card) => ({
+    id: String(card.id || uid()), subjectId: card.subjectId, front: card.front.slice(0, 1000),
+    back: card.back.slice(0, 5000), due: typeof card.due === 'string' && Number.isFinite(Date.parse(card.due)) ? card.due : '',
+    interval: Math.max(0, Math.min(60, Math.floor(Number(card.interval) || 0))),
+  })) : [];
   const validKinds = ['task', 'event', 'worry', 'idea'];
   const validStatuses = ['active', 'done', 'archived'];
   const entries: Entry[] = obj.entries.map((entry) => {
     if (!entry || typeof entry.title !== 'string' || !validKinds.includes(entry.kind) || !validStatuses.includes(entry.status)) throw new Error('Há registros inválidos no backup.');
     return {
       id: String(entry.id || crypto.randomUUID()), title: entry.title.slice(0, 200),
+      subjectId: entry.subjectId && hasSubject(entry.subjectId) ? entry.subjectId : undefined,
       note: String(entry.note || '').slice(0, 3000), kind: entry.kind,
       status: entry.status, importance: [1,2,3].includes(entry.importance) ? entry.importance : 2,
       effort: [1,2,3].includes(entry.effort) ? entry.effort : 2,
@@ -62,7 +87,6 @@ export function validateData(value: unknown): AppData {
       cost: Math.max(1, Math.min(100000, Math.trunc(Number(item.cost) || 1))),
       createdAt: String(item.createdAt || new Date().toISOString()) };
   });
-  const base = emptyData();
   const profile = obj.profile;
   return {
     version: 1,
@@ -72,7 +96,7 @@ export function validateData(value: unknown): AppData {
       theme: ['light','dark','system'].includes(profile.theme) ? profile.theme : 'system',
       reducedMotion: !!profile.reducedMotion,
     },
-    entries, rewards, activity,
+    subjects, notes, flashcards, entries, rewards, activity,
     focus: obj.focus && typeof obj.focus.entryId === 'string' && typeof obj.focus.startedAt === 'string' ? obj.focus : null,
     break: obj.break && typeof obj.break.startedAt === 'string' && Number.isFinite(obj.break.minutes)
       ? { startedAt: obj.break.startedAt, minutes: Math.max(1, Math.min(60, obj.break.minutes)) } : null,
@@ -91,7 +115,7 @@ export async function loadData(): Promise<AppData> {
     db.close();
     if (raw !== undefined) return validateData(raw);
   } catch (error) {
-    console.warn('Brisa: leitura do IndexedDB indisponível.', error);
+    console.warn('NowWork: leitura do IndexedDB indisponível.', error);
   }
   try {
     const fallback = localStorage.getItem(FALLBACK);
@@ -101,20 +125,33 @@ export async function loadData(): Promise<AppData> {
   }
 }
 
-export async function saveData(data: AppData): Promise<void> {
+async function writeSnapshot(data: AppData): Promise<void> {
   try {
     const db = await openDatabase();
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(STORE, 'readwrite');
-      tx.objectStore(STORE).put(data, KEY);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
-    db.close();
-    localStorage.setItem(FALLBACK, JSON.stringify(data));
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).put(data, KEY);
+        tx.oncomplete = () => resolve();
+        tx.onabort = () => reject(tx.error);
+        tx.onerror = () => reject(tx.error);
+      });
+    } finally {
+      db.close();
+    }
   } catch (error) {
-    // Último recurso para navegadores que bloqueiam armazenamento persistente.
     localStorage.setItem(FALLBACK, JSON.stringify(data));
-    console.warn('Brisa: salvando no armazenamento de contingência.', error);
+    console.warn('NowWork: salvando no armazenamento de contingência.', error);
+    return;
   }
+  // A full or disabled fallback store should not report a failure after IndexedDB committed.
+  try { localStorage.setItem(FALLBACK, JSON.stringify(data)); } catch { /* IndexedDB has the current snapshot. */ }
+}
+
+let pendingWrite = Promise.resolve();
+
+export function saveData(data: AppData): Promise<void> {
+  const write = pendingWrite.then(() => writeSnapshot(data));
+  pendingWrite = write.catch(() => {});
+  return write;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { KeyboardOff, List, Type } from 'lucide-react';
@@ -65,9 +65,9 @@ function ToolGroups({ groups }: { groups: ToolGroup[] }) {
   </div>;
 }
 
-export function NotebookToolbar({ simple, categories, mobile, panel, setPanel, extra, dismissKeyboard, showInsert, clearExtra }: {
+export function NotebookToolbar({ simple, ribbon, supplemental, categories, mobile, panel, setPanel, extra, dismissKeyboard, showInsert, clearExtra }: {
   simple: { history: ReactNode; text: ReactNode; lists: ReactNode; insert: ReactNode };
-  categories: ToolCategory[]; mobile: boolean; panel: string | null; setPanel: (panel: string | null) => void; extra?: ReactNode;
+  ribbon: ReactNode; supplemental: ToolGroup[]; categories: ToolCategory[]; mobile: boolean; panel: string | null; setPanel: (panel: string | null) => void; extra?: ReactNode;
   dismissKeyboard: () => void; showInsert: () => void; clearExtra: () => void;
 }) {
   const [simpleCategory, setSimpleCategory] = useState('format');
@@ -80,7 +80,7 @@ export function NotebookToolbar({ simple, categories, mobile, panel, setPanel, e
   const advanced = toolbarMode === 'advanced';
   const animate = !reduced && !reducedMotion;
   const selected = categories.find(({ id }) => id === (advanced ? panel : simpleCategory)) ?? categories[0];
-  const open = !!extra || panel === 'more' || panel === 'text' || panel === 'lists' || (advanced && panel === selected.id);
+  const open = !!extra || panel === 'more' || panel === 'text' || panel === 'lists' || (advanced && panel === 'context' && selected.id === 'context');
   const extraRef = useRef(clearExtra);
   extraRef.current = clearExtra;
 
@@ -125,14 +125,33 @@ export function NotebookToolbar({ simple, categories, mobile, panel, setPanel, e
         {categories.map(({ id, label }) => <Button key={id} variant="ghost" size="sm" aria-pressed={id === selected.id}
           onMouseDown={(event) => event.preventDefault()} onClick={() => setSimpleCategory(id)}>{label}</Button>)}
       </div>}
-      <ToolGroups groups={selected.groups} />
+      <ToolGroups groups={advanced && panel === 'more' ? supplemental : selected.groups} />
     </>;
+
+  const openInsert = (event: MouseEvent<HTMLButtonElement>) => {
+    trigger.current = event.currentTarget;
+    setPanel(null);
+    showInsert();
+  };
+  const insert = advanced
+    ? <Button variant="ghost" size="sm" icon={simple.insert} aria-expanded={panel === null && !!extra}
+        onMouseDown={(event) => event.preventDefault()} onClick={openInsert}>Inserir</Button>
+    : <IconButton label="Inserir" aria-expanded={panel === null && !!extra}
+        onMouseDown={(event) => event.preventDefault()} onClick={openInsert}>{simple.insert}</IconButton>;
+  const more = <IconButton label="Mais ferramentas" aria-expanded={panel === 'more'} onMouseDown={(event) => event.preventDefault()}
+    onClick={(event) => togglePanel('more', event.currentTarget)}><strong>Aa</strong></IconButton>;
 
   const bar = <div ref={root} className={mobile ? 'note-controls note-dock' : 'note-controls note-toolbar'}
     style={mobile && inset ? { bottom: inset + 8, '--note-keyboard-inset': inset + 'px' } as CSSProperties : undefined}>
-    <div className="note-command-bar" role="group" aria-label="Ferramentas do caderno">
-      <div className="note-command-group">{simple.history}</div>
-      {advanced ? <div className="note-command-group note-categories">{categories.map(categoryButton)}</div> : <>
+    <div className={'note-command-bar' + (advanced ? ' note-command-advanced' : '')} role="group" aria-label="Ferramentas do caderno">
+      {advanced ? <div className="note-ribbon-scroll" tabIndex={0} role="group" aria-label="Barra avançada rolável">
+        {ribbon}
+        <div className="note-ribbon-extra" role="group" aria-label="Inserir e mais ferramentas">
+          {insert}{more}{simple.history}
+          {categories.filter(({ id }) => id === 'context').map(categoryButton)}
+        </div>
+      </div> : <>
+        <div className="note-command-group">{simple.history}</div>
         {mobile ? <div className="note-command-group">
           {([['text', 'Texto', Type], ['lists', 'Listas', List]] as const).map(([id, label, Icon]) =>
             <IconButton key={id} label={label} aria-expanded={panel === id && !extra} onMouseDown={(event) => event.preventDefault()}
@@ -141,16 +160,7 @@ export function NotebookToolbar({ simple, categories, mobile, panel, setPanel, e
           <div className="note-command-group">{simple.text}</div>
           <div className="note-command-group">{simple.lists}</div>
         </>}
-        <div className="note-command-group">
-          <IconButton label="Inserir" aria-expanded={panel === null && !!extra}
-            onMouseDown={(event) => event.preventDefault()} onClick={(event) => {
-              trigger.current = event.currentTarget;
-              setPanel(null);
-              showInsert();
-            }}>{simple.insert}</IconButton>
-          <IconButton label="Mais ferramentas" aria-expanded={panel === 'more'} onMouseDown={(event) => event.preventDefault()}
-            onClick={(event) => togglePanel('more', event.currentTarget)}><strong>Aa</strong></IconButton>
-        </div>
+        <div className="note-command-group">{insert}{more}</div>
       </>}
       {mobile && inset > 0 && <IconButton label="Recolher teclado" onMouseDown={(event) => event.preventDefault()}
         onClick={dismissKeyboard}><KeyboardOff size={18} /></IconButton>}

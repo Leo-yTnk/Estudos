@@ -1,5 +1,23 @@
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import project from './package.json' with { type: 'json' };
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+
+const require = createRequire(import.meta.url);
+
+function fontLicenses(): Plugin {
+  return {
+    name: 'nowwork-font-licenses',
+    apply: 'build',
+    generateBundle() {
+      const source = Object.keys(project.dependencies).filter((name) => /^@fontsource(?:-variable)?\//.test(name))
+        .map((name) => name + '\n\n' + readFileSync(require.resolve(name + '/LICENSE'), 'utf8').trim())
+        .join('\n\n' + '-'.repeat(72) + '\n\n');
+      this.emitFile({ type: 'asset', fileName: 'font-licenses.txt', source });
+    },
+  };
+}
 
 function offlineWorkspace(): Plugin {
   return {
@@ -58,7 +76,7 @@ self.addEventListener('fetch', event => {
 }
 
 export default defineConfig({
-  plugins: [react(), offlineWorkspace()],
+  plugins: [react(), fontLicenses(), offlineWorkspace()],
   // Hash routes keep navigation at the site root, so assets can follow the deployed directory.
   base: './',
   build: {

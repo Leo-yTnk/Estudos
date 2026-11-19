@@ -1,3 +1,4 @@
+import type { EditorTypography } from './lib/editorTypography';
 import type { JSONContent } from '@tiptap/core';
 
 export type EntryKind = 'task' | 'event' | 'worry' | 'idea';
@@ -74,6 +75,7 @@ export interface AppData {
     theme: Theme;
     reducedMotion: boolean;
     toolbarMode: 'simple' | 'advanced';
+    editorTypography: EditorTypography;
   };
   subjects: Subject[];
   subjectVisits: SubjectVisit[];
@@ -89,7 +91,7 @@ export interface AppData {
 export function emptyData(): AppData {
   return {
     version: 1,
-    profile: { name: '', energy: 2, theme: 'system', reducedMotion: false, toolbarMode: 'simple' },
+    profile: { name: '', energy: 2, theme: 'system', reducedMotion: false, toolbarMode: 'simple', editorTypography: {} },
     subjects: [
       { id: 'math', icon: 'calculator', title: 'Matemática', color: 'mint' },
       { id: 'portuguese', icon: 'pen-nib', title: 'Português', color: 'violet' },

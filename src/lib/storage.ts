@@ -1,3 +1,4 @@
+import { validateEditorTypography } from './editorTypography';
 import { validateDocument } from './documents';
 import { BLOCK_TYPES, SUBJECT_COLORS, emptyData, uid } from '../types';
 import type { AppData, Entry, Activity, Reward } from '../types';
@@ -102,6 +103,7 @@ export function validateData(value: unknown): AppData {
       theme: ['light','dark','system'].includes(profile.theme) ? profile.theme : 'system',
       reducedMotion: !!profile.reducedMotion,
       toolbarMode: profile.toolbarMode === 'advanced' ? 'advanced' : 'simple',
+      editorTypography: validateEditorTypography(profile.editorTypography),
     },
     subjects, subjectVisits, notes, flashcards, entries, rewards, activity,
     focus: obj.focus && typeof obj.focus.entryId === 'string' && typeof obj.focus.startedAt === 'string' ? obj.focus : null,

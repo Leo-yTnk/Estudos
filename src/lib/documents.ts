@@ -1,4 +1,5 @@
-import { Extension, Mark, getSchema, type JSONContent } from '@tiptap/core';
+import { Bold, starInputRegex, starPasteRegex } from '@tiptap/extension-bold';
+import { Extension, Mark, getSchema, markInputRule, markPasteRule, type JSONContent } from '@tiptap/core';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { TableKit } from '@tiptap/extension-table';
 import Highlight from '@tiptap/extension-highlight';
@@ -42,15 +43,49 @@ const scriptMark = (name: string, tag: string, opposite: string) => Mark.create(
   renderHTML: () => [tag, 0],
 });
 
+const editorTextInput = Extension.create({
+  name: 'editorTextInput',
+  addInputRules() {
+    return [
+      markInputRule({ find: /(?:^|\s)(\/\/([^/\s][^/]*?)\/\/)$/, type: this.editor.schema.marks.italic }),
+      markInputRule({ find: /(?:^|\s)(__([^_\s][^_]*?)__)$/, type: this.editor.schema.marks.underline }),
+    ];
+  },
+});
+
+const textWeight = Extension.create({
+  name: 'textWeight',
+  addGlobalAttributes: () => [{ types: ['textStyle'], attributes: {
+    fontWeight: {
+      default: null,
+      parseHTML: (element) => /^\d+$/.test(element.style.fontWeight) ? Number(element.style.fontWeight) : null,
+      renderHTML: ({ fontWeight }) => Number.isInteger(fontWeight) && fontWeight >= 1 && fontWeight <= 1000
+        ? { style: 'font-weight: ' + fontWeight } : {},
+    },
+  } }],
+});
+
+const notebookBold = Bold.extend({
+  addInputRules() { return [markInputRule({ find: starInputRegex, type: this.type })]; },
+  addPasteRules() { return [markPasteRule({ find: starPasteRegex, type: this.type })]; },
+});
+
+const notebookStarterKit = StarterKit.extend({
+  addExtensions() {
+    return (this.parent?.() ?? []).map((extension) => extension.name === 'bold' ? notebookBold : extension);
+  },
+});
+
 export const documentExtensions = [
   Extension.create({
     name: 'noteLayout',
     addGlobalAttributes: () => [{ types: ['doc'], attributes: { noteWidth: { default: null } } }],
   }),
-  StarterKit.configure({
-    heading: { levels: [2, 3] },
+  notebookStarterKit.configure({
+    heading: { levels: [1, 2, 3, 4, 5, 6] },
     link: { openOnClick: false, defaultProtocol: 'https', isAllowedUri: (url) => !!safeLink(url) },
   }),
+  editorTextInput, textWeight,
   TableKit.configure({ table: { renderWrapper: true } }),
   Highlight.configure({ multicolor: true }),
   TextStyleKit.configure({ backgroundColor: false }),

@@ -1,3 +1,4 @@
+import { EditorTypographySettings } from './study/EditorTypographySettings';
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ArrowLeft, Check, CircleHelp, Coffee, Download, Pencil, ShieldCheck, Sparkles, Trash2, Upload, X } from 'lucide-react';
@@ -84,6 +85,7 @@ function Settings() {
           {mode === 'simple' ? 'Simplificado' : 'Avançado'}{data.profile.toolbarMode === mode && <Check size={15} />}
         </button>)}
       </div>
+      <EditorTypographySettings />
     </div>
     <div className="settings-group"><div className="settings-group-title">Seus dados</div>
       <p className="settings-description"><ShieldCheck size={17}/> Suas informações ficam neste navegador. Nenhum cadastro ou servidor é necessário.</p>

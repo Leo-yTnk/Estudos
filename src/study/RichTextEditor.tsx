@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type CSSProperties } from 'react';
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
 import { AlignCenter, AlignJustify, AlignLeft, AlignRight, ArrowDown, ArrowUp, Bold, Clipboard, ClipboardList, Code2, Copy, Eraser, Highlighter, IndentDecrease, IndentIncrease,
-  ImagePlus, Italic, LayoutGrid, Link2, List, ListChecks, ListOrdered, Minus, Plus, Quote, Redo2, Scissors, SlidersHorizontal, Strikethrough, Subscript, Superscript, Table2, Trash2, Underline, Undo2, Type, PanelsTopLeft } from 'lucide-react';
+  ImagePlus, Italic, LayoutGrid, Link2, List, ListChecks, ListOrdered, Minus, Plus, Quote, Redo2, Scissors, SlidersHorizontal, Strikethrough, Subscript, Superscript, Table2, Trash2, Underline, Undo2, Type } from 'lucide-react';
 import type { JSONContent } from '@tiptap/core';
 import { NodeSelection } from '@tiptap/pm/state';
 import { closeHistory } from '@tiptap/pm/history';
@@ -13,14 +13,11 @@ import { Button, IconButton, Toolbar } from '../components/ui';
 import { documentExtensions, safeLink } from '../lib/documents';
 import { copyNoteSelection, pasteNoteSelection } from '../lib/noteClipboard';
 import { useApp } from '../state/AppState';
+import { allowsWeight, defaultEditorFont, editorTextStyles, editorTypographyVariables, findEditorFont, type EditorTextStyle } from '../lib/editorTypography';
+import { FontSelect, FontWeightField } from './EditorFontFields';
 import { canMoveBlock, moveBlock } from '../lib/editorBlocks';
 import { EditorActionButton, NotebookToolbar, useMobileEditor, type EditorAction, type ToolGroup, type ToolCategory } from './NotebookToolbar';
 
-const fonts = [
-  { label: 'Padrão', value: '' }, { label: 'Arial', value: 'Arial, sans-serif' },
-  { label: 'Georgia', value: 'Georgia, serif' }, { label: 'Times', value: 'Times New Roman, serif' },
-  { label: 'Verdana', value: 'Verdana, sans-serif' }, { label: 'Monoespaçada', value: 'ui-monospace, monospace' },
-];
 const sizes = [12, 14, 16, 18, 20, 24, 28, 32, 40, 48];
 const inkColors = [['Vinho', '#a52343'], ['Laranja', '#a34e20'], ['Verde', '#237456'], ['Azul', '#315bb1'], ['Roxo', '#7845a9']];
 const highlightColors = [['Amarelo', '#f7e39b'], ['Verde', '#a9ebca'], ['Azul', '#b6d9ff'], ['Violeta', '#dcc7ff'], ['Rosa', '#ffbfd7']];
@@ -33,7 +30,7 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
   const [link, setLink] = useState<string | null>(null);
   const [invalidLink, setInvalidLink] = useState(false);
   const [popover, setPopover] = useState<'paste' | 'ink' | 'highlight' | 'insert' | 'collections' | null>(null);
-  const { notify } = useApp();
+  const { notify, data } = useApp();
   const fileInput = useRef<HTMLInputElement>(null);
   const mobile = useMobileEditor();
   const editor = useEditor({
@@ -52,14 +49,17 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
       const textStyle = editor.getAttributes('textStyle');
       const selection = editor.state.selection;
       const selectedBlock = selection instanceof NodeSelection ? selection.node.type.name : null;
-      const block = editor.getAttributes(editor.isActive('heading') ? 'heading' : 'paragraph');
+      const heading = editor.isActive('heading');
+      const block = editor.getAttributes(heading ? 'heading' : 'paragraph');
+      const style: EditorTextStyle = heading ? `h${block.level}` as EditorTextStyle
+        : editor.isActive('codeBlock') ? 'code' : editor.isActive('blockquote') ? 'quote'
+          : list ? 'list' : editor.isActive('table') ? 'table' : 'p';
       const indent = Number(block.indent) || 0;
       return {
-        list, block, textStyle, selectedBlock, pageWidth: editor.state.doc.attrs.noteWidth ?? 'standard',
+        list, block, textStyle, selectedBlock, style, headingLevel: heading ? block.level : 0, pageWidth: editor.state.doc.attrs.noteWidth ?? 'standard',
         superscript: editor.isActive('superscript'), subscript: editor.isActive('subscript'), highlightColor: editor.getAttributes('highlight').color,
         bold: editor.isActive('bold'), italic: editor.isActive('italic'), underline: editor.isActive('underline'),
-        strike: editor.isActive('strike'), highlight: editor.isActive('highlight'), body: editor.isActive('paragraph'),
-        h2: editor.isActive('heading', { level: 2 }), h3: editor.isActive('heading', { level: 3 }),
+        strike: editor.isActive('strike'), highlight: editor.isActive('highlight'),
         bullet: editor.isActive('bulletList'), ordered: editor.isActive('orderedList'), task: editor.isActive('taskList'),
         quote: editor.isActive('blockquote'), code: editor.isActive('codeBlock'), link: editor.isActive('link'),
         selected: !editor.state.selection.empty, table: editor.isActive('table'),
@@ -190,25 +190,33 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
     { label: 'Opções de colagem', icon: <ClipboardList size={17} />, pressed: popover === 'paste', run: () => toggle('paste') },
     { label: 'Recortar', icon: <Scissors size={17} />, disabled: !tools.selected, run: () => copy(true) },
   ];
-  const styleSelect = <select aria-label="Estilo" title="Estilo" value={tools.h2 ? 'h2' : tools.h3 ? 'h3' : 'body'} onChange={(event) => {
-      const value = event.target.value;
-      if (value === 'body') focus().setParagraph().run();
-      else focus().setHeading({ level: value === 'h2' ? 2 : 3 }).run();
-    }}>
-      <option value="body">Corpo</option><option value="h2">Título</option><option value="h3">Subtítulo</option>
-    </select>;
-  const fontSelects = <div className="note-format-selects"><select aria-label="Fonte" title="Fonte" value={tools.textStyle.fontFamily ?? ''} onChange={(event) =>
-      event.target.value ? focus().setFontFamily(event.target.value).run() : focus().unsetFontFamily().run()}>
-      {tools.textStyle.fontFamily && !fonts.some(({ value }) => value === tools.textStyle.fontFamily) && <option value={tools.textStyle.fontFamily}>Outra fonte</option>}
-      {fonts.map(({ label, value }) => <option key={label} value={value}>{label}</option>)}
-    </select>
-    <select aria-label="Tamanho da fonte" title="Tamanho da fonte" value={tools.textStyle.fontSize ?? ''} onChange={(event) =>
-      event.target.value ? focus().setFontSize(event.target.value).run() : focus().unsetFontSize().run()}>
-      <option value="">Auto</option>
-      {tools.textStyle.fontSize && !sizes.some((size) => size + 'px' === tools.textStyle.fontSize) && <option value={tools.textStyle.fontSize}>{tools.textStyle.fontSize}</option>}
-      {sizes.map((size) => <option key={size} value={size + 'px'}>{size} px</option>)}
-    </select>
-  </div>;
+  const styleSelect = <select aria-label="Estilo" title="Estilo" value={tools.headingLevel} onChange={(event) => {
+    const level = Number(event.target.value) as 0 | 1 | 2 | 3 | 4 | 5 | 6;
+    if (level === 0) focus().setParagraph().run();
+    else focus().setHeading({ level }).run();
+  }}>
+    <option value="0">Corpo</option>
+    {editorTextStyles.slice(0, 6).map(([style, label], index) => <option key={style} value={index + 1}>{label}</option>)}
+  </select>;
+  const inlineFont = findEditorFont(tools.textStyle.fontFamily);
+  const defaultFont = findEditorFont(data.profile.editorTypography[tools.style]?.font) ?? defaultEditorFont(tools.style);
+  const effectiveFont = inlineFont ?? defaultFont;
+  const fontSelect = <FontSelect value={inlineFont?.name ?? tools.textStyle.fontFamily ?? ''} onChange={(name) => {
+    const font = findEditorFont(name);
+    const chain = focus();
+    if (font) chain.setFontFamily(font.family);
+    else chain.unsetFontFamily();
+    if (!allowsWeight(tools.textStyle.fontWeight, font ?? defaultFont)) chain.setMark('textStyle', { fontWeight: null }).removeEmptyTextStyle();
+    chain.run();
+  }} />;
+  const weightField = <FontWeightField key={effectiveFont.name} font={effectiveFont} value={tools.textStyle.fontWeight ?? undefined}
+    onChange={(weight) => focus().setMark('textStyle', { fontWeight: weight ?? null }).removeEmptyTextStyle().run()} />;
+  const sizeSelect = <select aria-label="Tamanho da fonte" title="Tamanho da fonte" value={tools.textStyle.fontSize ?? ''} onChange={(event) =>
+    event.target.value ? focus().setFontSize(event.target.value).run() : focus().unsetFontSize().run()}>
+    <option value="">Auto</option>
+    {tools.textStyle.fontSize && !sizes.some((size) => size + 'px' === tools.textStyle.fontSize) && <option value={tools.textStyle.fontSize}>{tools.textStyle.fontSize}</option>}
+    {sizes.map((size) => <option key={size} value={size + 'px'}>{size} px</option>)}
+  </select>;
   const colorActions: EditorAction[] = [
     { label: 'Cor do texto', icon: <span className="note-ink-icon" style={{ borderColor: tools.textStyle.color || undefined }}>A</span>, pressed: popover === 'ink', run: () => toggle('ink') },
     { label: 'Cor de fundo', icon: <Highlighter size={18} />, pressed: tools.highlight || popover === 'highlight', run: () => toggle('highlight') },
@@ -243,29 +251,38 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
   const insertCommands = [insertImage, insertTable, linkAction, setAction, quote, code, separator];
   const context: ToolGroup[] = tools.table ? [{ label: 'Linhas e colunas', rows: [group(table)] }]
     : contextualBlock ? [{ label: 'Elemento selecionado', rows: [group([propertyAction, ...blocks.slice(2)])] }] : [];
+  const supplemental: ToolGroup[] = [
+    { label: 'Peso da fonte', rows: [weightField] },
+    { label: 'Formatação', rows: [group([...colorActions, clear, lists[2]]), lineHeight] },
+    { label: 'Página e blocos', rows: [pageWidth, group(blocks.slice(2))] },
+  ];
   const categories: ToolCategory[] = [
     { id: 'format', label: 'Texto', icon: <Type size={19} />, groups: [
-      { label: 'Estilo e fonte', rows: [<>{styleSelect}{fontSelects}</>, group([...marks, ...colorActions, clear])] },
-      { label: 'Listas e parágrafo', rows: [group(lists), <>{group(align)}{group(blocks.slice(0, 2))}{lineHeight}</>] },
+      { label: 'Estilo e fonte', rows: [<>{styleSelect}{fontSelect}{sizeSelect}</>, group(marks)] },
+      { label: 'Listas e parágrafo', rows: [group(lists), group([...align, ...blocks.slice(0, 2)])] },
+      ...supplemental,
       { label: 'Área de transferência', rows: [group(clipboard)] },
-    ] },
-    { id: 'insert', label: 'Inserir', icon: <Plus size={20} />, groups: [
-      { label: 'Elementos', rows: [group(insertCommands.filter((action) => action !== setAction))] },
-      { label: 'Conjuntos', rows: [Object.entries(collectionTypes).map(([key, definition]) => {
-        const kind = key as CollectionKind;
-        const Icon = collectionIcons[kind];
-        return <Button key={kind} variant="ghost" size="sm" icon={<Icon size={17} />} onMouseDown={(event) => event.preventDefault()}
-          onClick={() => insertSet(kind)}>{definition.label}</Button>;
-      })] },
-    ] },
-    { id: 'layout', label: 'Layout', icon: <PanelsTopLeft size={18} />, groups: [
-      { label: 'Documento', rows: [pageWidth] },
-      { label: 'Parágrafo', rows: [<>{group([...align, ...blocks.slice(0, 2)])}{lineHeight}</>] },
-      { label: 'Ordem dos blocos', rows: [group(blocks.slice(2))] },
     ] },
     ...(context.length ? [{ id: 'context', label: tools.table ? 'Tabela' : tools.selectedBlock === 'collection' ? 'Conjunto' : 'Imagem',
       icon: tools.table ? <Table2 size={18} /> : <SlidersHorizontal size={18} />, groups: context }] : []),
   ];
+  const ribbon = <>
+    <div className="note-ribbon-clipboard" role="group" aria-label="Área de transferência">
+      <div className="note-ribbon-paste">
+        <Button variant="ghost" size="sm" icon={clipboard[0].icon} onMouseDown={(event) => event.preventDefault()} onClick={clipboard[0].run}>Colar</Button>
+        <EditorActionButton action={clipboard[2]} />
+      </div>
+      <div className="note-ribbon-copy"><EditorActionButton action={clipboard[1]} /><EditorActionButton action={clipboard[3]} /></div>
+    </div>
+    <div className="note-ribbon-font" role="group" aria-label="Estilo e fonte">
+      <div className="note-ribbon-font-selects">{styleSelect}{fontSelect}{sizeSelect}</div>
+      <div className="note-ribbon-marks">{group(marks)}</div>
+    </div>
+    <div className="note-ribbon-paragraph" role="group" aria-label="Parágrafo">
+      <div>{group(align)}</div>
+      <div>{group([...lists.slice(0, 2), ...blocks.slice(0, 2)])}</div>
+    </div>
+  </>;
   const title = popover === 'paste' ? 'Opções de colagem' : popover === 'ink' ? 'Cor do texto' : popover === 'highlight'
     ? 'Cor de fundo' : popover === 'collections' ? 'Inserir conjunto' : 'Inserir';
   const setColor = (color?: string) => {
@@ -315,9 +332,10 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
       } catch (error) { notify(error instanceof Error ? error.message : 'Não foi possível inserir a imagem.'); }
     }} />
     <NotebookToolbar simple={{ history: group(history), text: <>{styleSelect}{group(marks.slice(0, 3))}</>,
-      lists: group(lists), insert: <Plus size={21} /> }} categories={categories} panel={toolPanel} setPanel={setToolPanel} extra={extra} mobile={mobile}
+      lists: group(lists), insert: <Plus size={21} /> }} ribbon={ribbon} supplemental={supplemental} categories={categories} panel={toolPanel} setPanel={setToolPanel} extra={extra} mobile={mobile}
       clearExtra={() => { setPopover(null); setLink(null); }} showInsert={() => toggle('insert')}
       dismissKeyboard={() => { if (link !== null && document.activeElement instanceof HTMLElement) document.activeElement.blur(); else editor.commands.blur(); }} />
-    <EditorContent editor={editor} className="document-content" data-width={tools.pageWidth} />
+    <EditorContent editor={editor} className="document-content" data-width={tools.pageWidth}
+      style={editorTypographyVariables(data.profile.editorTypography) as CSSProperties} />
   </div>;
 }

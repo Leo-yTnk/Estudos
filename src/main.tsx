@@ -10,6 +10,7 @@ import './styles/app.css';
 import './styles/system.css';
 import './styles/workspace.css';
 import './styles/navigation.css';
+import './styles/editor-fonts.css';
 import './styles/document.css';
 import './styles/collections.css';
 

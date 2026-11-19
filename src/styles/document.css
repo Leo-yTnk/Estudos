@@ -211,9 +211,10 @@ html:has(.nw-shell[data-notebook-page]) { scroll-padding-top: calc(var(--workspa
 .note-ribbon-scroll > div { flex: none; padding-inline: var(--space-2); }
 .note-ribbon-scroll > div + div { border-inline-start: 1px solid var(--line); }
 .note-history-group { display: grid; gap: 2px; }
-.note-ribbon-clipboard { display: grid; align-items: stretch; grid-template-columns: auto auto auto; gap: 2px; }
+.note-ribbon-clipboard { display: grid; align-items: stretch; grid-template-columns: auto auto; grid-template-rows: repeat(2, minmax(38px, 1fr)); gap: 2px; }
 .note-ribbon-clipboard .note-ribbon-paste {
   display: flex;
+  grid-row: 1 / span 2;
   flex-direction: column;
   gap: var(--space-1);
   min-width: 58px;
@@ -229,6 +230,19 @@ html:has(.nw-shell[data-notebook-page]) { scroll-padding-top: calc(var(--workspa
 .note-ribbon-font-selects { grid-template-columns: minmax(0, 30fr) minmax(0, 35fr) minmax(0, 17.5fr) minmax(0, 17.5fr); align-items: center; }
 .note-ribbon-font-selects .ds-select { padding-inline: 6px; gap: 2px; font-size: var(--text-caption); }
 .note-ribbon-font-selects .ds-select > svg { width: 11px; }
+.note-format-trigger.btn, .note-size-input {
+  min-width: 0;
+  min-height: 38px;
+  padding: var(--space-1) var(--space-2);
+  background: var(--surface-soft);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  font-size: var(--text-caption);
+}
+.note-size-input { width: 100%; }
+.note-tool-row .note-size-input { width: 66px; }
+.note-typography-slider { display: grid; gap: var(--space-2); max-width: 220px; padding-block: var(--space-1); }
+.note-typography-slider output { font-size: var(--text-caption); color: var(--secondary); }
 .note-ribbon-insertion { display: grid; align-content: center; }
 .note-insert-actions { display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, auto); align-items: center; gap: 2px; }
 .note-simple-insertion { display: flex; align-items: center; gap: var(--space-2); width: 100%; min-width: 0; overflow-x: auto; scrollbar-width: thin; }

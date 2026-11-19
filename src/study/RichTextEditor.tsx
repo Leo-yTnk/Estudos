@@ -11,17 +11,17 @@ import { collectionTypes, createCollection, type CollectionKind } from '../lib/c
 import { importLocalImage } from '../lib/localImages';
 import { blockViews, collectionIcons, editDocumentBlock } from './collections/DocumentBlocks';
 import { Options } from './collections/Fields';
-import { Select } from '../components/Select';
+import { NumberSlider } from '../components/NumberSlider';
 import { Button, IconButton, Toolbar } from '../components/ui';
 import { documentExtensions, safeLink } from '../lib/documents';
 import { copyNoteSelection, pasteNoteSelection } from '../lib/noteClipboard';
 import { useApp } from '../state/AppState';
 import { allowsWeight, defaultEditorFont, editorTextStyles, editorTypographyVariables, findEditorFont, type EditorTextStyle } from '../lib/editorTypography';
-import { ExactFontWeight, FontSelect, FontWeightField } from './EditorFontFields';
+import { FontSelect } from './EditorFontFields';
 import { canMoveBlock, moveBlock } from '../lib/editorBlocks';
 import { EditorActionButton, NotebookToolbar, useMobileEditor, type EditorAction, type ToolGroup, type ToolCategory } from './NotebookToolbar';
 
-const sizes = [12, 14, 16, 18, 20, 24, 28, 32, 40, 48];
+const textLevels = ['Corpo', ...editorTextStyles.slice(0, 6).map(([id]) => id.toUpperCase())];
 const inkColors = [['Vinho', '#a52343'], ['Laranja', '#a34e20'], ['Verde', '#237456'], ['Azul', '#315bb1'], ['Roxo', '#7845a9']];
 const highlightColors = [['Amarelo', '#f7e39b'], ['Verde', '#a9ebca'], ['Azul', '#b6d9ff'], ['Violeta', '#dcc7ff'], ['Rosa', '#ffbfd7']];
 
@@ -40,11 +40,29 @@ function selectionBeforeBlur(view: EditorView): Selection {
     ? new TextSelection(anchor, head) : selection;
 }
 
+function TypographySlider({ label, value, min, max, stops, describe, apply, reset }: {
+  label: string; value: number; min: number; max: number; stops?: readonly number[];
+  describe?: (value: number) => string; apply: (value: number) => void; reset?: () => void;
+}) {
+  const [draft, setDraft] = useState(() => stops
+    ? stops.reduce((best, stop) => Math.abs(stop - value) < Math.abs(best - value) ? stop : best)
+    : Math.min(max, Math.max(min, value)));
+  return <form className="note-typography-slider" onSubmit={(event) => { event.preventDefault(); apply(draft); }}>
+    <NumberSlider label={label} value={draft} min={min} max={max} stops={stops} vertical describe={describe} onChange={setDraft} />
+    {describe && <output>{describe(draft)}</output>}
+    <Toolbar>
+      <Button size="sm" type="submit" variant="primary">Aplicar</Button>
+      {reset && <Button size="sm" onClick={reset}>Padrão</Button>}
+    </Toolbar>
+  </form>;
+}
+
 export function RichTextEditor({ content, onChange }: { content: JSONContent; onChange: (content: JSONContent) => void }) {
   const [toolPanel, setToolPanel] = useState<string | null>(null);
   const [link, setLink] = useState<string | null>(null);
   const [invalidLink, setInvalidLink] = useState(false);
-  const [popover, setPopover] = useState<'ink' | 'highlight' | 'weight' | null>(null);
+  const [sizeDraft, setSizeDraft] = useState<string | null>(null);
+  const [popover, setPopover] = useState<'ink' | 'highlight' | 'weight' | 'style' | null>(null);
   const { notify, data } = useApp();
   const fileInput = useRef<HTMLInputElement>(null);
   const blurredSelection = useRef<{ doc: PMNode; selection: Selection }>(null);
@@ -99,14 +117,15 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
   });
 
   if (!editor || !tools) return null;
-  const focus = () => {
+  const selectionChain = () => {
     const chain = editor.chain();
     const saved = blurredSelection.current;
     if (!editor.view.hasFocus() && saved?.doc === editor.state.doc) {
       chain.command(({ tr }) => { tr.setSelection(saved.selection); return true; });
     }
-    return chain.focus(undefined, { scrollIntoView: false });
+    return chain;
   };
+  const focus = () => selectionChain().focus(undefined, { scrollIntoView: false });
   const closeTools = () => { setToolPanel(null); setPopover(null); };
   const closeLink = () => { closeTools(); setLink(null); setInvalidLink(false); focus().run(); };
   const applyLink = (event: React.FormEvent) => {
@@ -220,13 +239,16 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
     { label: 'Copiar', icon: <Copy size={17} />, disabled: !tools.selected, run: () => copy(false) },
     { label: 'Recortar', icon: <Scissors size={17} />, disabled: !tools.selected, run: () => copy(true) },
   ];
-  const styleSelect = <Select label="Estilo" value={tools.headingLevel as number} returnFocus={false}
-    options={[[0, 'Corpo'], ...editorTextStyles.slice(0, 6).map(([, label], index) => [index + 1, label] as const)]}
-    onChange={(value) => {
-      const level = value as 0 | 1 | 2 | 3 | 4 | 5 | 6;
-      if (level === 0) focus().setParagraph().run();
-      else focus().setHeading({ level }).run();
-    }} />;
+  const applyStyle = (value: number) => {
+    setPopover(null);
+    const level = value as 0 | 1 | 2 | 3 | 4 | 5 | 6;
+    if (level === 0) focus().setParagraph().run();
+    else focus().setHeading({ level }).run();
+  };
+  const styleControl = <Button size="sm" variant="ghost" className="note-format-trigger" aria-label="Estilo"
+    aria-expanded={popover === 'style'} onMouseDown={(event) => event.preventDefault()} onClick={() => toggle('style')}>
+    {textLevels[tools.headingLevel] ?? textLevels[0]}
+  </Button>;
   const inlineFont = findEditorFont(tools.textStyle.fontFamily);
   const defaultFont = findEditorFont(data.profile.editorTypography[tools.style]?.font) ?? defaultEditorFont(tools.style);
   const effectiveFont = inlineFont ?? defaultFont;
@@ -238,14 +260,32 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
     if (!allowsWeight(tools.textStyle.fontWeight, font ?? defaultFont)) chain.setMark('textStyle', { fontWeight: null }).removeEmptyTextStyle();
     chain.run();
   }} />;
-  const applyWeight = (weight?: number) => focus().setMark('textStyle', { fontWeight: weight ?? null }).removeEmptyTextStyle().run();
-  const weightField = <FontWeightField font={effectiveFont} value={tools.textStyle.fontWeight ?? undefined}
-    onChange={applyWeight} onCustom={() => toggle('weight')} />;
-  const sizeOptions: [string, string][] = [['', 'Auto'], ...sizes.map((size): [string, string] => [size + 'px', String(size)])];
-  const activeSize = tools.textStyle.fontSize ?? '';
-  if (activeSize && !sizeOptions.some(([value]) => value === activeSize)) sizeOptions.push([activeSize, activeSize]);
-  const sizeSelect = <Select label="Tamanho da fonte" returnFocus={false} value={activeSize} options={sizeOptions}
-    onChange={(value) => value ? focus().setFontSize(value).run() : focus().unsetFontSize().run()} />;
+  const applyWeight = (weight?: number) => {
+    setPopover(null);
+    focus().setMark('textStyle', { fontWeight: weight ?? null }).removeEmptyTextStyle().run();
+  };
+  const weightField = <Button size="sm" variant="ghost" className="note-format-trigger" aria-label="Peso da fonte"
+    aria-expanded={popover === 'weight'} onMouseDown={(event) => event.preventDefault()} onClick={() => toggle('weight')}>
+    {tools.textStyle.fontWeight ?? 'Peso'}
+  </Button>;
+  const activeSize = String(tools.textStyle.fontSize ?? '').replace(/px$/, '');
+  const applySize = (refocus: boolean) => {
+    if (sizeDraft === null) return;
+    setSizeDraft(null);
+    const value = sizeDraft.trim().replace(',', '.').replace(/px$/i, '').trim();
+    if (value && (!/^\d+(?:\.\d+)?$/.test(value) || Number(value) <= 0 || Number(value) > 2000)) {
+      notify('Use um tamanho entre 0 e 2000 pixels.');
+      return;
+    }
+    const chain = refocus ? focus() : selectionChain();
+    (value ? chain.setFontSize(Number(value) + 'px') : chain.unsetFontSize()).run();
+  };
+  const sizeInput = <input className="ds-input note-size-input" aria-label="Tamanho da fonte" title="Tamanho em pixels"
+    inputMode="decimal" placeholder="Auto" value={sizeDraft ?? activeSize} onChange={(event) => setSizeDraft(event.target.value)}
+    onBlur={() => applySize(false)} onKeyDown={(event) => {
+      if (event.key === 'Enter') { event.preventDefault(); applySize(true); }
+      if (event.key === 'Escape') { event.preventDefault(); setSizeDraft(null); }
+    }} />;
   const colorActions: EditorAction[] = [
     { label: 'Cor do texto', icon: <span className="note-ink-icon" style={{ borderColor: tools.textStyle.color || undefined }}>A</span>, pressed: popover === 'ink', run: () => toggle('ink') },
     { label: 'Cor de fundo', icon: <Highlighter size={18} />, pressed: tools.highlight || popover === 'highlight', run: () => toggle('highlight') },
@@ -292,7 +332,7 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
   const textActions = [...marks, ...colorActions, clear];
   const categories: ToolCategory[] = [
     { id: 'format', label: 'Texto', icon: <Type size={19} />, groups: [
-      { label: 'Estilo e fonte', rows: [<>{styleSelect}{fontSelect}{weightField}{sizeSelect}</>, group(textActions)] },
+      { label: 'Estilo e fonte', rows: [<>{styleControl}{fontSelect}{weightField}{sizeInput}</>, group(textActions)] },
       { label: 'Listas e parágrafo', rows: [group(lists), group([...align, ...blocks.slice(0, 2)])] },
       ...supplemental,
       { label: 'Área de transferência', rows: [group(clipboard)] },
@@ -308,7 +348,7 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
       <EditorActionButton action={clipboard[2]} />
     </div>
     <div className="note-ribbon-font" role="group" aria-label="Estilo e fonte">
-      <div className="note-ribbon-font-selects">{styleSelect}{fontSelect}{weightField}{sizeSelect}</div>
+      <div className="note-ribbon-font-selects">{styleControl}{fontSelect}{weightField}{sizeInput}</div>
       <div className="note-ribbon-marks">{group(textActions)}</div>
     </div>
     <div className="note-ribbon-paragraph" role="group" aria-label="Parágrafo">
@@ -317,7 +357,7 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
     </div>
   </>;
   const title = popover === 'ink' ? 'Cor do texto' : popover === 'highlight'
-    ? 'Cor de fundo' : 'Peso da fonte';
+    ? 'Cor de fundo' : popover === 'style' ? 'Estilo' : 'Peso da fonte';
   const setColor = (color?: string) => {
     setPopover(null);
     const chain = focus();
@@ -327,8 +367,13 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
   const extra = linkForm || (popover && <section className="note-ribbon-panel" aria-label={title}>
     <div className="nw-section-heading"><strong>{title}</strong>
       <IconButton label="Fechar opções" onClick={() => { setPopover(null); focus().run(); }}>×</IconButton></div>
-    {popover === 'weight' ? <ExactFontWeight font={effectiveFont} value={tools.textStyle.fontWeight ?? undefined} autoFocus
-      onChange={(weight) => { setPopover(null); applyWeight(weight); }} /> : <Toolbar>
+    {popover === 'style' ? <TypographySlider label="Nível do texto" value={tools.headingLevel} min={0} max={6}
+      describe={(value) => textLevels[value]} apply={applyStyle} />
+    : popover === 'weight' ? <TypographySlider label="Peso da fonte" min={effectiveFont.range?.[0] ?? effectiveFont.weights[0]}
+      max={effectiveFont.range?.[1] ?? effectiveFont.weights.at(-1)!} stops={effectiveFont.range ? undefined : effectiveFont.weights}
+      value={tools.textStyle.fontWeight ?? data.profile.editorTypography[tools.style]?.weight
+        ?? (tools.headingLevel ? tools.headingLevel === 2 || tools.headingLevel === 3 ? 700 : 800 : 400)}
+      apply={applyWeight} reset={() => applyWeight()} /> : <Toolbar>
       <Button size="sm" onMouseDown={(event) => event.preventDefault()} onClick={() => setColor()}>Padrão</Button>
       {(popover === 'ink' ? inkColors : highlightColors).map(([name, color]) =>
         <button type="button" key={color} className="note-color-swatch" aria-label={name} title={name}
@@ -351,7 +396,7 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
           .insertContent({ type: 'noteImage', attrs: { image } }).run();
       } catch (error) { notify(error instanceof Error ? error.message : 'Não foi possível inserir a imagem.'); }
     }} />
-    <NotebookToolbar simple={{ history: group(history), text: <>{styleSelect}{group(marks.slice(0, 3))}</>,
+    <NotebookToolbar simple={{ history: group(history), text: <>{styleControl}{group(marks.slice(0, 3))}</>,
       lists: group(lists), insertIcon: <Plus size={21} /> }} ribbon={ribbon} insertion={insertion} supplemental={supplemental} categories={categories} panel={toolPanel} setPanel={setToolPanel} extra={extra} mobile={mobile}
       clearExtra={() => { setPopover(null); setLink(null); }}
       dismissKeyboard={() => {

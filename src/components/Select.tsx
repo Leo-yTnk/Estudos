@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, type CSSProperties } from 'react';
 import * as Primitive from '@radix-ui/react-select';
 import { Check, ChevronDown } from 'lucide-react';
 
@@ -20,14 +20,14 @@ export function Select<T extends string | number>({ label, value, options, onCha
       <Primitive.Value>{displayValue}</Primitive.Value><Primitive.Icon asChild><ChevronDown size={13} aria-hidden="true" /></Primitive.Icon>
     </Primitive.Trigger>
     <Primitive.Portal>
-      <Primitive.Content className="ds-select-content" position="popper" align="start" sideOffset={6} collisionPadding={8}
+      <Primitive.Content className="ds-select-content" style={{ '--ds-select-rows': options.length } as CSSProperties} position="popper" align="start" sideOffset={6} collisionPadding={8}
         onCloseAutoFocus={(event) => { if (!returnFocus && selected.current) event.preventDefault(); }}>
-        <Primitive.Viewport className="ds-select-options">
+        <div className="ds-select-frame"><Primitive.Viewport className="ds-select-options">
           {options.map(([key, name]) => <Primitive.Item key={key} value={String(key) || 'ds-empty'} className="ds-select-option">
             <Primitive.ItemText>{name}</Primitive.ItemText>
             <Primitive.ItemIndicator><Check size={15} aria-hidden="true" /></Primitive.ItemIndicator>
           </Primitive.Item>)}
-        </Primitive.Viewport>
+        </Primitive.Viewport></div>
       </Primitive.Content>
     </Primitive.Portal>
   </Primitive.Root>;

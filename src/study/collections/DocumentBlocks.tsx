@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { closeHistory } from '@tiptap/pm/history';
 import { NodeSelection } from '@tiptap/pm/state';
-import { ArrowDown, ArrowUp, CalendarRange, Copy, LayoutGrid, Settings2, Trash2, Workflow } from 'lucide-react';
+import { ArrowDown, ArrowUp, CalendarRange, Copy, LayoutGrid, Plus, Settings2, Trash2, Workflow } from 'lucide-react';
 import { Button, IconButton, Toolbar } from '../../components/ui';
-import { bound, collectionTypes, CollectionBlock, localImage, NoteImage, readCollection, type Collection } from '../../lib/collections';
+import { bound, collectionTypes, CollectionBlock, localImage, NoteImage, newCard, readCollection, type Collection } from '../../lib/collections';
 import { canMoveBlock, moveBlock } from '../../lib/editorBlocks';
 import { CardsConfig, CardSet } from './CardSet';
 import { FlowConfig, FlowSet } from './FlowSet';
@@ -52,6 +52,7 @@ function CollectionView(props: NodeViewProps) {
   const { editor, node, selected, getPos } = props;
   const root = useRef<HTMLElement>(null);
   const [draft, setDraft] = useState<Collection | null>(null);
+  const [focusCardId, setFocusCardId] = useState('');
   const value = readCollection(node.attrs.value);
   useEffect(() => {
     const element = root.current;
@@ -79,6 +80,11 @@ function CollectionView(props: NodeViewProps) {
       <Button size="sm" variant="ghost" className="collection-label" aria-pressed={selected} icon={<Icon size={18} />}
         onClick={() => { if (selectBlock(props)) editor.commands.focus(); }}>{value ? collectionTypes[value.kind].label : 'Conjunto indisponível'}</Button>
       <Toolbar label="Ações do conjunto">
+        {value?.kind === 'cards' && <IconButton label="Adicionar card" onClick={() => {
+          const item = newCard();
+          change({ ...value, items: [...value.items, item] });
+          setFocusCardId(item.id);
+        }}><Plus size={18} /></IconButton>}
         {value && <IconButton label="Editar conjunto" onClick={() => { selectBlock(props); setDraft(value); }}><Settings2 size={18} /></IconButton>}
         <IconButton label="Mover conjunto para cima" disabled={selected && !canMoveBlock(editor.state, -1)} onClick={() => move(-1)}><ArrowUp size={16} /></IconButton>
         <IconButton label="Mover conjunto para baixo" disabled={selected && !canMoveBlock(editor.state, 1)} onClick={() => move(1)}><ArrowDown size={16} /></IconButton>
@@ -86,7 +92,7 @@ function CollectionView(props: NodeViewProps) {
         <IconButton label="Excluir conjunto" onClick={() => removeBlock(props)}><Trash2 size={16} /></IconButton>
       </Toolbar>
     </header>
-    {value?.kind === 'cards' && <CardSet value={value} change={change} />}
+    {value?.kind === 'cards' && <CardSet value={value} change={change} focusCardId={focusCardId} />}
     {value?.kind === 'flow' && <FlowSet value={value} change={change} />}
     {value?.kind === 'timeline' && <TimelineSet value={value} change={change} />}
     {draft && <CollectionSheet title="Editar conjunto" close={() => setDraft(null)}>

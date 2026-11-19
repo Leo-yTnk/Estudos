@@ -54,6 +54,8 @@
   --radius-md: 26px;
   --radius-lg: 34px;
   --radius-xl: 42px;
+  --card-edge: color-mix(in srgb, var(--line) 57%, var(--surface) 43%);
+  --card-stitch: color-mix(in srgb, var(--stitch) 43%, var(--surface-soft) 57%);
   --card-edge-width: 2px;
   --card-stitch-width: 2px;
   --space-1: 4px;

@@ -1,12 +1,13 @@
+import { NumberSlider } from '../../components/NumberSlider';
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
 import { motion, useMotionValue, useReducedMotion } from 'motion/react';
-import { GripVertical, Pencil, Plus, Trash2 } from 'lucide-react';
+import { GripVertical, Pencil, Trash2 } from 'lucide-react';
 import { Button, IconButton, Toolbar } from '../../components/ui';
 import { useApp } from '../../state/AppState';
 import { springs } from '../../lib/motion';
 import { getSubjectIcon, subjectIcons } from '../../lib/subjectAppearance';
 import { SubjectIcon } from '../Subjects';
-import { moveItem, newCard, type Card, type Cards } from '../../lib/collections';
+import { moveItem, type Card, type Cards } from '../../lib/collections';
 import { CollectionSheet, ImageField, MoveControls, Options, Range } from './Fields';
 
 type CardText = Pick<Card, 'title' | 'description'>;
@@ -211,14 +212,14 @@ export function CardsConfig({ value, change }: { value: Cards; change: (value: C
         if (visual === 'none' && !config.title && !config.description) set({ visual, title: true });
         else set({ visual });
       }} />
-    {config.visual === 'icon' && <Options label="Ícones por card" value={config.iconCount} options={[[1, '1'], [2, '2']]} onChange={(iconCount) => set({ iconCount })} />}
+    {config.visual === 'icon' && <NumberSlider label="Ícones por card" value={config.iconCount} min={1} max={2} onChange={(iconCount) => set({ iconCount })} />}
     {config.visual === 'image' && <Range label="Altura da imagem" value={config.imageHeight} min={72} max={320} unit=" px" onChange={(imageHeight) => set({ imageHeight })} />}
     <label className="toggle-row">Título<input type="checkbox" checked={config.title}
       disabled={config.title && config.visual === 'none' && !config.description} onChange={(event) => set({ title: event.target.checked })} /></label>
     <label className="toggle-row">Descrição<input type="checkbox" checked={config.description}
       disabled={config.description && config.visual === 'none' && !config.title} onChange={(event) => set({ description: event.target.checked })} /></label>
     {config.visual === 'none' && <small className="nw-muted">Mantenha o título ou a descrição ativados.</small>}
-    <Options label="Cards por linha" value={config.columns} options={[[1, '1'], [2, '2'], [3, '3'], [4, '4']]} onChange={(columns) => set({ columns })} />
+    <NumberSlider label="Cards por linha" value={config.columns} min={1} max={4} onChange={(columns) => set({ columns })} />
     <section className="collection-preview" aria-label="Prévia do conjunto">
       <strong>Prévia</strong>
       <CardGrid value={value} />
@@ -226,17 +227,17 @@ export function CardsConfig({ value, change }: { value: Cards; change: (value: C
   </>;
 }
 
-export function CardSet({ value, change }: { value: Cards; change: (value: Cards) => void }) {
+export function CardSet({ value, change, focusCardId }: { value: Cards; change: (value: Cards) => void; focusCardId: string }) {
   const [draft, setDraft] = useState<Card | null>(null);
-  const [newId, setNewId] = useState('');
+  const focusedCardId = useRef('');
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!newId) return;
-    const card = Array.from(root.current?.querySelectorAll<HTMLElement>('[data-card-id]') ?? []).find((item) => item.dataset.cardId === newId);
+    if (!focusCardId || focusedCardId.current === focusCardId) return;
+    const card = Array.from(root.current?.querySelectorAll<HTMLElement>('[data-card-id]') ?? []).find((item) => item.dataset.cardId === focusCardId);
     if (!card) return;
     (card.querySelector<HTMLElement>('input, textarea') ?? card.querySelector<HTMLElement>('button'))?.focus();
-    setNewId('');
-  }, [newId, value.items]);
+    focusedCardId.current = focusCardId;
+  }, [focusCardId, value.items]);
   const index = value.items.findIndex(({ id }) => id === draft?.id);
   const config = value.config;
   const reorder = (id: string, target: number) => {
@@ -248,11 +249,6 @@ export function CardSet({ value, change }: { value: Cards; change: (value: Cards
   };
   return <div className="collection-cards-editor" ref={root}>
     <CardGrid value={value} edit={setDraft} editText={editText} reorder={reorder} />
-    <Button size="sm" variant="ghost" icon={<Plus size={16} />} onClick={() => {
-      const item = newCard();
-      change({ ...value, items: [...value.items, item] });
-      setNewId(item.id);
-    }}>Adicionar card</Button>
     {draft && index >= 0 && <CollectionSheet title="Opções do card" close={() => setDraft(null)}>
       {config.visual === 'icon' && Array.from({ length: config.iconCount }, (_, slot) =>
         <Options key={slot} label={'Ícone ' + (slot + 1)} value={draft.icons[slot] || ''} options={[['', 'Nenhum'], ...subjectIcons.map(({ icon, label }) => [icon.iconName, label] as const)]}

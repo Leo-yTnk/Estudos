@@ -95,7 +95,7 @@ p { line-height: 1.55; }
 .search-control input { border: 0; outline: 0; color: var(--ink); background: transparent; font-size: 12px; width: 105px; }
 .filter-select { color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 9px; font-size: 12px; height: 37px; max-width: 152px; }
 .record-list { display: flex; flex-direction: column; gap: 10px; }
-.entry-card { background: var(--surface); border: var(--card-edge-width) solid var(--line); border-radius: var(--radius-md); box-shadow: var(--shadow-card); overflow: hidden; }
+.entry-card { background: var(--surface); border: var(--card-edge-width) solid var(--card-edge); border-radius: var(--radius-md); box-shadow: var(--shadow-card); overflow: hidden; }
 .entry-card.is-dimmed { opacity: .75; }
 .entry-summary { width: 100%; border: 0; background: transparent; padding: 17px 19px; display: flex; justify-content: space-between; align-items: center; text-align: left; gap: 12px; color: inherit; }
 .entry-summary:hover { background: var(--surface-soft); }

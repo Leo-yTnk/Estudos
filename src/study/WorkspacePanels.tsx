@@ -58,12 +58,11 @@ export function SubjectForm({ subject, save, remove, close }: {
 
 const normalize = (value: string) => value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
 
-export function WorkspaceSearch({ subject, note, entry, initialQuery }: {
-  initialQuery: string;
+export function WorkspaceSearch({ subject, note, entry }: {
   subject: (id: string) => void; note: (subjectId: string, id: string) => void; entry: (id: string) => void;
 }) {
   const { data } = useApp();
-  const [query, setQuery] = useState(initialQuery);
+  const [query, setQuery] = useState('');
   const term = normalize(query.trim());
   const results = term ? [
     ...data.subjects.map((item) => ({ id: 's-' + item.id, title: item.title, type: 'Matéria', content: item.title, Icon: BookOpen, open: () => subject(item.id) })),

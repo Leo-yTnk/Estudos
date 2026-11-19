@@ -27,12 +27,12 @@
 .notebook-page-list strong { font: 800 var(--text-body)/1.2 var(--font-heading); overflow-wrap: anywhere; }
 .notebook-page-list small { font-size: var(--text-caption); color: var(--secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-html:has(.nw-shell[data-notebook-page]) { scroll-padding-top: 180px; }
+html:has(.nw-shell[data-notebook-page]) { scroll-padding-top: calc(106px + env(safe-area-inset-top)); }
 .nw-main.document-workspace {
-  --note-header-offset: 71px;
+  --note-header-offset: env(safe-area-inset-top, 0px);
   --note-path-height: 52px;
   width: min(100%, 1440px);
-  padding: 0;
+  padding: var(--note-header-offset) 0 0;
 }
 .document-sheet { min-height: calc(100dvh - var(--note-header-offset)); background: var(--surface); }
 .document-top {
@@ -210,9 +210,6 @@ html:has(.nw-shell[data-notebook-page]) { scroll-padding-top: 180px; }
     scroll-padding-top: calc(58px + env(safe-area-inset-top));
     scroll-padding-bottom: calc(68px + env(safe-area-inset-bottom));
   }
-  .nw-shell[data-notebook-page] .workspace-header { display: none; }
-  .nw-main.document-workspace { --note-header-offset: env(safe-area-inset-top, 0px); --note-path-height: 52px; padding-top: var(--note-header-offset); }
-  .document-sheet { min-height: calc(100dvh - var(--note-header-offset)); }
   .document-top > .ds-icon-button { min-width: 44px; min-height: 44px; }
   .document-title { font-size: 1.125rem; }
   .document-content .tiptap {

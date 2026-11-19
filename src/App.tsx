@@ -19,39 +19,18 @@ import { Notebook } from './study/Notebook';
 import { Review } from './study/Review';
 import { WorkspaceSearch, TaskForm, SubjectForm } from './study/WorkspacePanels';
 
-type Sheet = { kind: 'settings' | 'break' } | { kind: 'search'; query: string } | { kind: 'task'; subjectId?: string; dueAt?: string | null } | { kind: 'subject'; subject?: Subject };
+type Sheet = { kind: 'settings' | 'break' | 'search' } | { kind: 'task'; subjectId?: string; dueAt?: string | null } | { kind: 'subject'; subject?: Subject };
 
 function useWorkspaceRoute() {
   const [hash, setHash] = useState(() => window.location.hash);
-  const [position, setPosition] = useState(0);
-  const [last, setLast] = useState(0);
-  const currentPosition = useRef(0);
   useEffect(() => {
-    const replacePosition = (index: number) => window.history.replaceState({ ...window.history.state, nowWorkPosition: index }, '');
-    const start = 0;
-    currentPosition.current = start;
-    replacePosition(start);
-    const sync = () => {
-      const previous = currentPosition.current;
-      const saved = window.history.state?.nowWorkPosition;
-      const next = Number.isInteger(saved) ? saved : previous + 1;
-      if (!Number.isInteger(saved)) {
-        replacePosition(next);
-        setLast(next);
-      }
-      currentPosition.current = next;
-      setPosition(next);
-      setHash(window.location.hash);
-    };
+    const sync = () => setHash(window.location.hash);
     window.addEventListener('hashchange', sync);
     return () => window.removeEventListener('hashchange', sync);
   }, []);
   useEffect(() => { window.scrollTo(0, 0); }, [hash]);
   const open = (next: Route) => { window.location.hash = routeHref(next); };
-  return {
-    route: parseRoute(hash), open, canBack: position > 0, canForward: position < last,
-    back: () => window.history.back(), forward: () => window.history.forward(),
-  };
+  return { route: parseRoute(hash), open };
 }
 
 function Settings() {
@@ -129,7 +108,7 @@ function Settings() {
 
 function AppContent() {
   const app = useApp();
-  const { route, open, ...navigation } = useWorkspaceRoute();
+  const { route, open } = useWorkspaceRoute();
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const systemReduced = useReducedMotion();
   const reduce = !!systemReduced || app.data.profile.reducedMotion;
@@ -152,7 +131,7 @@ function AppContent() {
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && (!sheet || sheet.kind === 'search')) {
         event.preventDefault();
-        setSheet(sheet ? null : { kind: 'search', query: '' });
+        setSheet(sheet ? null : { kind: 'search' });
       }
     };
     window.addEventListener('keydown', onKey);
@@ -168,7 +147,7 @@ function AppContent() {
       event.preventDefault();
       document.getElementById('main-content')?.focus();
     }}>Ir para o conteúdo</a>
-    <WorkspaceNavigation current={route.area} {...navigation} search={(query) => setSheet({ kind: 'search', query })} settings={() => setSheet({ kind: 'settings' })} />
+    {!noteId && <WorkspaceNavigation current={route.area} search={() => setSheet({ kind: 'search' })} settings={() => setSheet({ kind: 'settings' })} />}
     <main className={'nw-main' + (noteId ? ' document-workspace' : '')} id="main-content" tabIndex={-1}>
       <motion.div key={routeKey} initial={reduce ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
         transition={reduce ? { duration: 0 } : springs.panel}>
@@ -178,27 +157,35 @@ function AppContent() {
           ? <Subjects open={subjectPage} create={createSubject} />
           : noteId ? <Notebook key={subject.id} subjectId={subject.id} noteId={noteId} open={(id) => subjectPage(subject.id, 'caderno', id)} />
           : <Stack className="workspace-page">
-              <a className="subject-directory-link" href={routeHref(areas.materias)}><ArrowLeft size={16} />Todas as matérias</a>
-              <PageHeading title={subject.title} icon={<SubjectMark subject={subject} />}
-                action={<IconButton label="Editar matéria" onClick={() => setSheet({ kind: 'subject', subject })}><Pencil size={18} /></IconButton>} />
-              <SectionNavigation label="Nesta matéria" links={subjectViews.map(({ id, label }) => ({ label, active: route.view === id,
-                href: routeHref({ area: 'materias', subjectId: subject.id, view: id }) }))} />
+              <div className="workspace-page-heading">
+                <PageHeading title={subject.title} icon={<div className="subject-heading-icons">
+                  <a className="subject-directory-link" href={routeHref(areas.materias)} aria-label="Todas as matérias" title="Todas as matérias">
+                    <ArrowLeft size={18} aria-hidden="true" />
+                  </a><SubjectMark subject={subject} />
+                </div>} action={<IconButton label="Editar matéria" onClick={() => setSheet({ kind: 'subject', subject })}><Pencil size={18} /></IconButton>} />
+                <SectionNavigation label="Nesta matéria" links={subjectViews.map(({ id, label }) => ({ label, active: route.view === id,
+                  href: routeHref({ area: 'materias', subjectId: subject.id, view: id }) }))} />
+              </div>
               {route.view === 'tarefas' && <Tasks key={subject.id} subjectId={subject.id} onAdd={() => newTask()} />}
               {route.view === 'caderno' && <Notebook key={subject.id} subjectId={subject.id} open={(id) => subjectPage(subject.id, 'caderno', id)} />}
               {route.view === 'revisao' && <Review key={subject.id} subjectId={subject.id} />}
             </Stack>)}
         {route.area === 'planejar' && <Stack className="workspace-page">
-          <PageHeading title="Planejar" />
-          <SectionNavigation label="Planejamento" links={planningViews.map(({ id, label }) =>
-            ({ label, active: route.view === id, href: routeHref({ area: 'planejar', view: id }) }))} />
+          <div className="workspace-page-heading">
+            <PageHeading title="Planejar" />
+            <SectionNavigation label="Planejamento" links={planningViews.map(({ id, label }) =>
+              ({ label, active: route.view === id, href: routeHref({ area: 'planejar', view: id }) }))} />
+          </div>
           {route.view === 'tarefas' && <Tasks key={route.entryId || 'all'} onlyId={route.entryId} onAdd={() => newTask()} />}
           {route.view === 'agenda' && <Week onAdd={newTask} />}
           {route.view === 'entrada' && <Mente key={route.entryId || 'all'} selectedId={route.entryId} />}
         </Stack>}
         {route.area === 'estudar' && <Stack className="workspace-page">
-          <PageHeading title="Estudar" />
-          <SectionNavigation label="Estudo" links={studyViews.map(({ id, label }) =>
-            ({ label, active: route.view === id, href: routeHref({ area: 'estudar', view: id }) }))} />
+          <div className="workspace-page-heading">
+            <PageHeading title="Estudar" />
+            <SectionNavigation label="Estudo" links={studyViews.map(({ id, label }) =>
+              ({ label, active: route.view === id, href: routeHref({ area: 'estudar', view: id }) }))} />
+          </div>
           {route.view === 'foco' ? <Agora onMind={() => open({ area: 'planejar', view: 'entrada' })} onBreak={() => setSheet({ kind: 'break' })} /> : <Evolucao />}
         </Stack>}
       </motion.div>
@@ -211,7 +198,7 @@ function AppContent() {
         {sheet.kind === 'subject' && <SubjectForm subject={sheet.subject} close={dismiss}
           save={(value) => { app.saveSubject(value); subjectPage(value.id); dismiss(); }}
           remove={(id) => { app.removeSubject(id); open(areas.materias); dismiss(); }} />}
-        {sheet.kind === 'search' && <WorkspaceSearch initialQuery={sheet.query} subject={(id) => { subjectPage(id); dismiss(); }}
+        {sheet.kind === 'search' && <WorkspaceSearch subject={(id) => { subjectPage(id); dismiss(); }}
           note={(sid, id) => { subjectPage(sid, 'caderno', id); dismiss(); }} entry={(id) => { openTask(id); dismiss(); }} />}
         {sheet.kind === 'break' && <div className="break-sheet-content">
           <div className="break-illustration"><Coffee size={32} strokeWidth={1.5} /></div>

@@ -49,10 +49,13 @@
   --subject-rose: #fae9ec; --subject-rose-ink: #8b4054;
   --corner-shape: squircle;
   --workspace-nav-height: 51px;
-  --radius-sm: 12px;
-  --radius-md: 18px;
-  --radius-lg: 24px;
-  --radius-xl: 30px;
+  --radius-xs: 14px;
+  --radius-sm: 18px;
+  --radius-md: 26px;
+  --radius-lg: 34px;
+  --radius-xl: 42px;
+  --card-edge-width: 2px;
+  --card-stitch-width: 2px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;

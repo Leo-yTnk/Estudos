@@ -1,6 +1,6 @@
 import { useRef, useState, type CSSProperties } from 'react';
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
-import { AlignCenter, AlignJustify, AlignLeft, AlignRight, ArrowDown, ArrowUp, Bold, Clipboard, ClipboardList, Code2, Copy, Eraser, Highlighter, IndentDecrease, IndentIncrease,
+import { AlignCenter, AlignJustify, AlignLeft, AlignRight, ArrowDown, ArrowUp, Bold, Clipboard, Code2, Copy, Eraser, Highlighter, IndentDecrease, IndentIncrease,
   ImagePlus, Italic, LayoutGrid, Link2, List, ListChecks, ListOrdered, Minus, Plus, Quote, Redo2, Scissors, SlidersHorizontal, Strikethrough, Subscript, Superscript, Table2, Trash2, Underline, Undo2, Type } from 'lucide-react';
 import type { JSONContent } from '@tiptap/core';
 import { NodeSelection, TextSelection, type Selection } from '@tiptap/pm/state';
@@ -44,7 +44,7 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
   const [toolPanel, setToolPanel] = useState<string | null>(null);
   const [link, setLink] = useState<string | null>(null);
   const [invalidLink, setInvalidLink] = useState(false);
-  const [popover, setPopover] = useState<'paste' | 'ink' | 'highlight' | 'weight' | null>(null);
+  const [popover, setPopover] = useState<'ink' | 'highlight' | 'weight' | null>(null);
   const { notify, data } = useApp();
   const fileInput = useRef<HTMLInputElement>(null);
   const blurredSelection = useRef<{ doc: PMNode; selection: Selection }>(null);
@@ -201,10 +201,10 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
       <Button size="sm" variant="ghost" onClick={closeLink}>Cancelar</Button></Toolbar>
   </form>;
 
-  const paste = (plain: boolean) => {
+  const paste = () => {
     setPopover(null);
-    void pasteNoteSelection(editor, plain).catch(() => {
-      notify(plain ? 'Use o atalho de colar sem formatação do navegador.' : 'Use o atalho ou o menu do navegador para colar.');
+    void pasteNoteSelection(editor).catch(() => {
+      notify('Use o atalho ou o menu do navegador para colar.');
       if (!editor.isDestroyed) focus().run();
     });
   };
@@ -216,9 +216,8 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
     setPopover((previous) => previous === kind ? null : kind);
   };
   const clipboard: EditorAction[] = [
-    { label: 'Colar', icon: <Clipboard size={17} />, run: () => paste(false) },
+    { label: 'Colar', icon: <Clipboard size={17} />, run: paste },
     { label: 'Copiar', icon: <Copy size={17} />, disabled: !tools.selected, run: () => copy(false) },
-    { label: 'Opções de colagem', icon: <ClipboardList size={17} />, pressed: popover === 'paste', run: () => toggle('paste') },
     { label: 'Recortar', icon: <Scissors size={17} />, disabled: !tools.selected, run: () => copy(true) },
   ];
   const styleSelect = <Select label="Estilo" value={tools.headingLevel as number} returnFocus={false}
@@ -282,18 +281,18 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
     return { label: 'Inserir ' + definition.label.toLocaleLowerCase('pt-BR'), icon: <Icon size={17} />, run: () => insertSet(kind) };
   });
   const insertion = <div className="note-ribbon-insertion" role="group" aria-label="Inserir">
-    <span className="note-tool-label">Inserir</span>
     <div className="note-insert-actions">{group([insertImage, insertTable, linkAction, ...insertSets, quote, code, separator])}</div>
   </div>;
   const context: ToolGroup[] = tools.table ? [{ label: 'Linhas e colunas', rows: [group(table)] }]
     : contextualBlock ? [{ label: 'Elemento selecionado', rows: [group([propertyAction, ...blocks.slice(2)])] }] : [];
   const supplemental: ToolGroup[] = [
-    { label: 'Formatação', rows: [group([...colorActions, clear, lists[2]]), lineHeight] },
+    { label: 'Formatação', rows: [group([lists[2]]), lineHeight] },
     { label: 'Página e blocos', rows: [pageWidth, group(blocks.slice(2))] },
   ];
+  const textActions = [...marks, ...colorActions, clear];
   const categories: ToolCategory[] = [
     { id: 'format', label: 'Texto', icon: <Type size={19} />, groups: [
-      { label: 'Estilo e fonte', rows: [<>{styleSelect}{fontSelect}{weightField}{sizeSelect}</>, group(marks)] },
+      { label: 'Estilo e fonte', rows: [<>{styleSelect}{fontSelect}{weightField}{sizeSelect}</>, group(textActions)] },
       { label: 'Listas e parágrafo', rows: [group(lists), group([...align, ...blocks.slice(0, 2)])] },
       ...supplemental,
       { label: 'Área de transferência', rows: [group(clipboard)] },
@@ -306,18 +305,18 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
       <Button variant="ghost" size="sm" className="note-ribbon-paste" icon={clipboard[0].icon}
         onMouseDown={(event) => event.preventDefault()} onClick={clipboard[0].run}>Colar</Button>
       <EditorActionButton action={clipboard[1]} />
-      <div className="note-clipboard-secondary">{group([clipboard[2], clipboard[3]])}</div>
+      <EditorActionButton action={clipboard[2]} />
     </div>
     <div className="note-ribbon-font" role="group" aria-label="Estilo e fonte">
       <div className="note-ribbon-font-selects">{styleSelect}{fontSelect}{weightField}{sizeSelect}</div>
-      <div className="note-ribbon-marks">{group(marks)}</div>
+      <div className="note-ribbon-marks">{group(textActions)}</div>
     </div>
     <div className="note-ribbon-paragraph" role="group" aria-label="Parágrafo">
       <div>{group(align)}</div>
       <div>{group([...lists.slice(0, 2), ...blocks.slice(0, 2)])}</div>
     </div>
   </>;
-  const title = popover === 'paste' ? 'Opções de colagem' : popover === 'ink' ? 'Cor do texto' : popover === 'highlight'
+  const title = popover === 'ink' ? 'Cor do texto' : popover === 'highlight'
     ? 'Cor de fundo' : 'Peso da fonte';
   const setColor = (color?: string) => {
     setPopover(null);
@@ -329,10 +328,7 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
     <div className="nw-section-heading"><strong>{title}</strong>
       <IconButton label="Fechar opções" onClick={() => { setPopover(null); focus().run(); }}>×</IconButton></div>
     {popover === 'weight' ? <ExactFontWeight font={effectiveFont} value={tools.textStyle.fontWeight ?? undefined} autoFocus
-      onChange={(weight) => { setPopover(null); applyWeight(weight); }} /> : popover === 'paste' ? <Toolbar>
-      <Button size="sm" onMouseDown={(event) => event.preventDefault()} onClick={() => paste(false)}>Manter formatação</Button>
-      <Button size="sm" onMouseDown={(event) => event.preventDefault()} onClick={() => paste(true)}>Somente texto</Button>
-    </Toolbar> : <Toolbar>
+      onChange={(weight) => { setPopover(null); applyWeight(weight); }} /> : <Toolbar>
       <Button size="sm" onMouseDown={(event) => event.preventDefault()} onClick={() => setColor()}>Padrão</Button>
       {(popover === 'ink' ? inkColors : highlightColors).map(([name, color]) =>
         <button type="button" key={color} className="note-color-swatch" aria-label={name} title={name}

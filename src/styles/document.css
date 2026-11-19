@@ -152,7 +152,7 @@ html:has(.nw-shell[data-notebook-page]) { scroll-padding-top: calc(var(--workspa
 .document-content .tiptap li > p, .document-content .tiptap li > div > p { margin-bottom: var(--space-1); }
 
 .document-content .tiptap mark {
-  border-radius: 3px;
+  border-radius: 5px;
   padding-inline: .08em;
   background: var(--note-highlight, #f7e39b);
   color: var(--note-highlight-ink, #30253a);
@@ -210,25 +210,34 @@ html:has(.nw-shell[data-notebook-page]) { scroll-padding-top: calc(var(--workspa
 }
 .note-ribbon-scroll > div { flex: none; padding-inline: var(--space-2); }
 .note-ribbon-scroll > div + div { border-inline-start: 1px solid var(--line); }
-.note-history-group, .note-clipboard-secondary { display: grid; gap: 2px; }
+.note-history-group { display: grid; gap: 2px; }
 .note-ribbon-clipboard { display: grid; align-items: stretch; grid-template-columns: auto auto auto; gap: 2px; }
-.note-ribbon-clipboard .note-ribbon-paste { min-width: 80px; color: var(--ink); background: var(--surface-soft); }
+.note-ribbon-clipboard .note-ribbon-paste {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 58px;
+  padding-inline: var(--space-2);
+  color: var(--ink);
+  background: var(--surface-soft);
+}
 .note-ribbon-clipboard .note-ribbon-paste:hover:not(:disabled) { background: var(--accent-soft); }
 .note-ribbon-font, .note-ribbon-paragraph { display: grid; grid-template-rows: repeat(2, minmax(38px, 1fr)); gap: var(--space-1); }
-.note-ribbon-font { width: 374px; }
+.note-ribbon-font { width: 402px; }
 .note-ribbon-paragraph { width: 184px; }
 .note-ribbon-font > div, .note-ribbon-paragraph > div { display: grid; gap: var(--space-1); }
 .note-ribbon-font-selects { grid-template-columns: minmax(0, 30fr) minmax(0, 35fr) minmax(0, 17.5fr) minmax(0, 17.5fr); align-items: center; }
 .note-ribbon-font-selects .ds-select { padding-inline: 6px; gap: 2px; font-size: var(--text-caption); }
 .note-ribbon-font-selects .ds-select > svg { width: 11px; }
-.note-ribbon-insertion { display: grid; align-content: center; gap: var(--space-1); }
+.note-ribbon-insertion { display: grid; align-content: center; }
 .note-insert-actions { display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, auto); align-items: center; gap: 2px; }
-.note-ribbon-insertion > .note-tool-label { padding-inline-start: var(--space-1); }
-.note-ribbon-scroll > .note-ribbon-insertion { display: flex; align-items: center; gap: var(--space-2); }
 .note-simple-insertion { display: flex; align-items: center; gap: var(--space-2); width: 100%; min-width: 0; overflow-x: auto; scrollbar-width: thin; }
 .note-simple-insertion .note-insert-actions { grid-template-rows: auto; }
 .note-simple-insertion > .btn { position: sticky; inset-inline-start: 0; z-index: 1; background: var(--accent-soft); }
-.note-ribbon-marks { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.note-ribbon-font > .note-ribbon-marks {
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 2px;
+}
 .note-ribbon-paragraph > div { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .note-ribbon-scroll button:focus-visible, .note-ribbon-scroll:focus-visible {
   outline: 2px solid var(--accent);
@@ -318,7 +327,7 @@ html:has(.nw-shell[data-notebook-page]) { scroll-padding-top: calc(var(--workspa
   }
   .note-dock .note-command-advanced { padding-inline: 0; }
   .note-ribbon-paragraph { width: 200px; }
-  .note-ribbon-font { width: 360px; }
+  .note-ribbon-font { width: 432px; }
   .note-ribbon-font, .note-ribbon-paragraph { grid-template-rows: repeat(2, minmax(44px, 1fr)); }
   .note-ribbon-scroll { padding: var(--space-1); }
   html:has(.note-command-advanced) { scroll-padding-bottom: calc(115px + env(safe-area-inset-bottom)); }

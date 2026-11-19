@@ -1,11 +1,11 @@
 /* Shared primitives. Feature styles supply layout and content-specific behavior. */
-.icon-button { border: 1px solid var(--line); color: var(--ink); background: var(--surface); min-width: 42px; min-height: 42px; display: inline-grid; place-items: center; border-radius: 15px; transition: background .18s, border-color .18s; }
+.icon-button { border: 1px solid var(--line); color: var(--ink); background: var(--surface); min-width: 42px; min-height: 42px; display: inline-grid; place-items: center; border-radius: var(--radius-sm); transition: background .18s, border-color .18s; }
 .icon-button:hover { background: var(--surface-soft); }
 .eyebrow { font-size: 10px; font-weight: 740; letter-spacing: .16em; line-height: 1.35; color: var(--accent); }
-.surface { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
-.surface::after { content: ''; pointer-events: none; position: absolute; inset: 6px; border: 1px dashed var(--stitch); border-radius: calc(var(--radius-lg) - 5px); opacity: .42; }
+.surface { --surface-radius: var(--radius-lg); position: relative; background: var(--surface); border: var(--card-edge-width) solid var(--line); border-radius: var(--surface-radius); box-shadow: var(--shadow-card); }
+.surface::after { content: ''; pointer-events: none; position: absolute; inset: 5px; border: var(--card-stitch-width) dashed var(--stitch); border-radius: calc(var(--surface-radius) - 7px); opacity: .5; }
 .surface > * { position: relative; z-index: 1; }
-.btn { appearance: none; border: 1px solid transparent; display: inline-flex; justify-content: center; align-items: center; gap: 8px; border-radius: 13px; font-weight: 660; line-height: 1.1; white-space: nowrap; transition: background-color var(--time-quick) var(--ease-standard), border-color var(--time-quick), color var(--time-quick); }
+.btn { appearance: none; border: 1px solid transparent; display: inline-flex; justify-content: center; align-items: center; gap: 8px; border-radius: var(--radius-sm); font-weight: 660; line-height: 1.1; white-space: nowrap; transition: background-color var(--time-quick) var(--ease-standard), border-color var(--time-quick), color var(--time-quick); }
 .btn-sm { padding: 10px 13px; min-height: 36px; font-size: 12px; }
 .btn-md { padding: 12px 17px; min-height: 43px; font-size: 13px; }
 .btn-lg { padding: 14px 20px; min-height: 48px; font-size: 14px; }
@@ -24,7 +24,7 @@
 .kind-amber { color: var(--amber); background: var(--amber-soft); }
 .kind-purple { color: var(--lavender); background: var(--lavender-soft); }
 .empty-state { padding: 36px 30px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 9px; }
-.empty-icon { display: grid; place-items: center; width: 54px; height: 54px; background: var(--accent-soft); color: var(--accent); border-radius: 20px; margin-bottom: 7px; }
+.empty-icon { display: grid; place-items: center; width: 54px; height: 54px; background: var(--accent-soft); color: var(--accent); border-radius: var(--radius-md); margin-bottom: 7px; }
 .empty-state h3 { margin: 0; font-size: 17px; }
 .empty-state p { color: var(--secondary); margin: 0; font-size: 13px; max-width: 420px; }
 .empty-action { margin-top: 12px; }
@@ -73,7 +73,8 @@
   font-size: var(--text-control);
 }
 .ds-select > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ds-select > svg { flex: none; color: var(--secondary); }
+.ds-select > svg { flex: none; color: var(--secondary); transition: rotate var(--time-quick) var(--ease-standard); }
+.ds-select[data-state='open'] > svg { rotate: 180deg; }
 .ds-select:hover, .ds-select[data-state='open'] { border-color: var(--accent); }
 .ds-select:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .ds-select-content {
@@ -88,6 +89,16 @@
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-nav);
   overflow: hidden;
+}
+@keyframes ds-select-expand {
+  from { opacity: 0; transform: scale(.98, .78); }
+  to { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-reduce-motion='true']) .ds-select-content[data-state='open'] {
+    transform-origin: var(--radix-select-content-transform-origin);
+    animation: ds-select-expand 185ms var(--ease-standard) both;
+  }
 }
 .ds-select-options { max-height: min(calc(var(--radix-select-content-available-height) - 10px), 350px); }
 .ds-select-option {

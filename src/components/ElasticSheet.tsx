@@ -37,6 +37,7 @@ export function ElasticSheet({ title, children, onClose }: { title: string; chil
     (target || panel.current)?.focus({ preventScroll: true });
     to(getLimits().min);
     const onKey = (event: KeyboardEvent) => {
+      if (event.target instanceof Element && event.target.closest('.ds-select-content')) return;
       if (event.key === 'Escape' && !event.defaultPrevented) close();
       if (event.key !== 'Tab') return;
       const controls = Array.from(panel.current?.querySelectorAll<HTMLElement>(

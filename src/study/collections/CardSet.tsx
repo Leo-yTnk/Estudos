@@ -9,25 +9,64 @@ import { SubjectIcon } from '../Subjects';
 import { moveItem, newCard, type Card, type Cards } from '../../lib/collections';
 import { CollectionSheet, ImageField, MoveControls, Options, Range } from './Fields';
 
-function CardContent({ item, config }: { item: Card; config: Cards['config'] }) {
+type CardText = Pick<Card, 'title' | 'description'>;
+
+function CardTextField({ field, value, commit }: { field: keyof CardText; value: string; commit: (value: string) => void }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const cancelled = useRef(false);
+  const finish = (next: string) => {
+    if (!cancelled.current && next !== value) commit(next);
+    cancelled.current = false;
+    setDraft(null);
+  };
+  const keyDown = (event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (event.nativeEvent.isComposing) return;
+    if (event.key === 'Escape') {
+      event.stopPropagation();
+      cancelled.current = true;
+      event.currentTarget.blur();
+    } else if (field === 'title' && event.key === 'Enter') {
+      event.preventDefault();
+      event.currentTarget.blur();
+    }
+  };
+  return field === 'title'
+    ? <input aria-label="Título do card" className="collection-card-title" placeholder="Sem título" maxLength={160}
+        value={draft ?? value} onChange={(event) => setDraft(event.target.value)} onBlur={(event) => finish(event.currentTarget.value)} onKeyDown={keyDown} />
+    : <textarea aria-label="Descrição do card" className="collection-card-description" placeholder="Adicionar descrição" maxLength={4000}
+        rows={2} value={draft ?? value} onChange={(event) => setDraft(event.target.value)} onBlur={(event) => finish(event.currentTarget.value)} onKeyDown={keyDown} />;
+}
+
+function CardContent({ item, config, editText, actions }: {
+  item: Card; config: Cards['config']; editText?: (patch: Partial<CardText>) => void; actions?: React.ReactNode;
+}) {
+  const icons = config.visual === 'icon' && item.icons.slice(0, config.iconCount).filter(Boolean).map((icon, index) =>
+    <span className="collection-card-icon" key={index}><SubjectIcon icon={getSubjectIcon({ id: '', icon })} /></span>);
   return <>
+    {((icons && icons.length > 0) || actions) && <div className="collection-card-top">
+      {icons && icons.length > 0 && <div className="collection-card-icons">{icons}</div>}
+      {actions}
+    </div>}
     {config.visual === 'image' && (item.image ? <div className="collection-card-image" style={{ height: config.imageHeight }}>
       <img draggable={false} src={item.image.src} alt={item.image.alt} style={{ objectPosition: item.x + '% ' + item.y + '%',
         transformOrigin: item.x + '% ' + item.y + '%', scale: item.crop / 100 }} />
     </div> : <div className="collection-card-image collection-card-placeholder" style={{ height: config.imageHeight }}>Sem imagem</div>)}
-    {config.visual === 'icon' && <span className="collection-card-icons">
-      {item.icons.slice(0, config.iconCount).filter(Boolean).map((icon, index) => <SubjectIcon key={index} icon={getSubjectIcon({ id: '', icon })} />)}
-    </span>}
-    {config.title && <strong>{item.title || 'Sem título'}</strong>}
-    {config.description && item.description && <div className="collection-copy">{item.description}</div>}
+    {(config.title || config.description) && <div className="collection-card-text">
+      {config.title && (editText
+        ? <CardTextField field="title" value={item.title} commit={(title) => editText({ title })} />
+        : <strong className="collection-card-title">{item.title || 'Sem título'}</strong>)}
+      {config.description && (editText
+        ? <CardTextField field="description" value={item.description} commit={(description) => editText({ description })} />
+        : item.description && <div className="collection-copy">{item.description}</div>)}
+    </div>}
   </>;
 }
 
 type Gesture = { id: string; x: number; y: number; mode: 'mouse' | 'touch'; stage: 'pending' | 'held' | 'drag';
   pointer: number; timer?: number; target: number; origin?: DOMRect };
 
-function CardGrid({ value, edit, reorder }: {
-  value: Cards; edit?: (item: Card) => void; reorder?: (id: string, index: number) => void;
+function CardGrid({ value, edit, editText, reorder }: {
+  value: Cards; edit?: (item: Card) => void; editText?: (id: string, patch: Partial<CardText>) => void; reorder?: (id: string, index: number) => void;
 }) {
   const { data } = useApp();
   const reduced = useReducedMotion() || data.profile.reducedMotion;
@@ -88,7 +127,7 @@ function CardGrid({ value, edit, reorder }: {
     const root = grid.current;
     if (!root || !edit) return;
     const start = (event: TouchEvent) => {
-      if (event.touches.length !== 1 || !(event.target instanceof Element) || event.target.closest('button')) { finish(false); return; }
+      if (event.touches.length !== 1 || !(event.target instanceof Element) || event.target.closest('button, input, textarea')) { finish(false); return; }
       const card = event.target.closest<HTMLElement>('[data-card-id]');
       const touch = event.changedTouches[0];
       if (!card?.dataset.cardId || !touch) return;
@@ -145,15 +184,15 @@ function CardGrid({ value, edit, reorder }: {
       onPointerCancel={(event) => { if (gesture.current?.mode === 'mouse' && gesture.current.pointer === event.pointerId) finish(false); }}
       style={{ '--card-columns': value.config.columns } as CSSProperties}>
       {ordered.map((item) => <motion.article key={item.id} layout={reduced ? false : 'position'} transition={springs.layout}
-        data-card-id={item.id} data-held={held === item.id} data-placeholder={dragging?.id === item.id} className="collection-card"
-        onClick={edit ? () => { if (performance.now() >= skipClick.current) edit(item); } : undefined}>
-        <div className="collection-card-content"><CardContent item={item} config={value.config} /></div>
-        {edit && <div className="collection-card-actions" onClick={(event) => event.stopPropagation()}>
-          <IconButton label={'Editar card ' + (item.title || '')} onClick={() => edit(item)}><Pencil size={16} /></IconButton>
-          <IconButton label={'Arrastar card ' + (item.title || '')} className="card-grip"
-            onPointerDown={(event) => startMouse(event, item.id, value.items.indexOf(item))}
-            onClick={() => { if (performance.now() >= skipClick.current) edit(item); }}><GripVertical size={16} /></IconButton>
-        </div>}
+        data-card-id={item.id} data-held={held === item.id} data-placeholder={dragging?.id === item.id} className="collection-card">
+        <div className="collection-card-content"><CardContent item={item} config={value.config}
+          editText={editText ? (patch) => editText(item.id, patch) : undefined}
+          actions={edit && <div className="collection-card-actions">
+            <IconButton label={'Opções do card ' + (item.title || '')} onClick={() => edit(item)}><Pencil size={16} /></IconButton>
+            <IconButton label={'Arrastar card ' + (item.title || '')} className="card-grip"
+              onPointerDown={(event) => startMouse(event, item.id, value.items.indexOf(item))}
+              onClick={() => { if (performance.now() >= skipClick.current) edit(item); }}><GripVertical size={16} /></IconButton>
+          </div>} /></div>
       </motion.article>)}
     </div>
     {moving && dragging && <motion.div aria-hidden="true" className="collection-card collection-card-moving"
@@ -189,16 +228,32 @@ export function CardsConfig({ value, change }: { value: Cards; change: (value: C
 
 export function CardSet({ value, change }: { value: Cards; change: (value: Cards) => void }) {
   const [draft, setDraft] = useState<Card | null>(null);
+  const [newId, setNewId] = useState('');
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!newId) return;
+    const card = Array.from(root.current?.querySelectorAll<HTMLElement>('[data-card-id]') ?? []).find((item) => item.dataset.cardId === newId);
+    if (!card) return;
+    (card.querySelector<HTMLElement>('input, textarea') ?? card.querySelector<HTMLElement>('button'))?.focus();
+    setNewId('');
+  }, [newId, value.items]);
   const index = value.items.findIndex(({ id }) => id === draft?.id);
   const config = value.config;
   const reorder = (id: string, target: number) => {
     const items = moveItem(value.items, value.items.findIndex((item) => item.id === id), target);
     if (items !== value.items) change({ ...value, items });
   };
-  return <>
-    <CardGrid value={value} edit={setDraft} reorder={reorder} />
-    <Button size="sm" variant="ghost" icon={<Plus size={16} />} onClick={() => setDraft(newCard())}>Adicionar card</Button>
-    {draft && <CollectionSheet title={index < 0 ? 'Adicionar card' : 'Editar card'} close={() => setDraft(null)}>
+  const editText = (id: string, patch: Partial<CardText>) => {
+    change({ ...value, items: value.items.map((item) => item.id === id ? { ...item, ...patch } : item) });
+  };
+  return <div className="collection-cards-editor" ref={root}>
+    <CardGrid value={value} edit={setDraft} editText={editText} reorder={reorder} />
+    <Button size="sm" variant="ghost" icon={<Plus size={16} />} onClick={() => {
+      const item = newCard();
+      change({ ...value, items: [...value.items, item] });
+      setNewId(item.id);
+    }}>Adicionar card</Button>
+    {draft && index >= 0 && <CollectionSheet title="Opções do card" close={() => setDraft(null)}>
       {config.visual === 'icon' && Array.from({ length: config.iconCount }, (_, slot) =>
         <Options key={slot} label={'Ícone ' + (slot + 1)} value={draft.icons[slot] || ''} options={[['', 'Nenhum'], ...subjectIcons.map(({ icon, label }) => [icon.iconName, label] as const)]}
           onChange={(name) => setDraft({ ...draft, icons: Array.from({ length: 2 }, (_, i) => i === slot ? name : draft.icons[i] || '') })} />)}
@@ -210,22 +265,18 @@ export function CardSet({ value, change }: { value: Cards; change: (value: Cards
           <Range label="Ampliação do recorte" value={draft.crop} min={100} max={250} unit="%" onChange={(crop) => setDraft({ ...draft, crop })} />
         </>}
       </>}
-      {config.title && <label className="field-label">Título<input className="ds-input" maxLength={160} value={draft.title}
-        onChange={(event) => setDraft({ ...draft, title: event.target.value })} /></label>}
-      {config.description && <label className="field-label">Descrição<textarea className="ds-input" maxLength={4000} value={draft.description}
-        onChange={(event) => setDraft({ ...draft, description: event.target.value })} /></label>}
       <div className="collection-card"><div className="collection-card-content"><CardContent item={draft} config={config} /></div></div>
-      {index >= 0 && <MoveControls subject="card" index={index} count={value.items.length} move={(target) => reorder(draft.id, target)} />}
+      <MoveControls subject="card" index={index} count={value.items.length} move={(target) => reorder(draft.id, target)} />
       <Toolbar>
         <Button variant="primary" size="sm" onClick={() => {
-          change({ ...value, items: index < 0 ? [...value.items, draft] : value.items.map((item) => item.id === draft.id ? draft : item) });
+          change({ ...value, items: value.items.map((item) => item.id === draft.id ? { ...draft, title: item.title, description: item.description } : item) });
           setDraft(null);
         }}>Salvar card</Button>
-        {index >= 0 && <Button size="sm" variant="danger" icon={<Trash2 size={16} />} onClick={() => {
+        <Button size="sm" variant="danger" icon={<Trash2 size={16} />} onClick={() => {
           change({ ...value, items: value.items.filter(({ id }) => id !== draft.id) });
           setDraft(null);
-        }}>Excluir card</Button>}
+        }}>Excluir card</Button>
       </Toolbar>
     </CollectionSheet>}
-  </>;
+  </div>;
 }

@@ -102,6 +102,7 @@
 }
 .subject-directory-link:hover { background: var(--accent-soft); }
 @media (max-width: 600px) {
+  :root { --workspace-nav-height: 53px; }
   .workspace-header-inner {
     width: auto;
     min-height: 52px;

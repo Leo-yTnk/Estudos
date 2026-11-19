@@ -3,18 +3,21 @@ import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
 import { AlignCenter, AlignJustify, AlignLeft, AlignRight, ArrowDown, ArrowUp, Bold, Clipboard, ClipboardList, Code2, Copy, Eraser, Highlighter, IndentDecrease, IndentIncrease,
   ImagePlus, Italic, LayoutGrid, Link2, List, ListChecks, ListOrdered, Minus, Plus, Quote, Redo2, Scissors, SlidersHorizontal, Strikethrough, Subscript, Superscript, Table2, Trash2, Underline, Undo2, Type } from 'lucide-react';
 import type { JSONContent } from '@tiptap/core';
-import { NodeSelection } from '@tiptap/pm/state';
+import { NodeSelection, TextSelection, type Selection } from '@tiptap/pm/state';
+import type { Node as PMNode } from '@tiptap/pm/model';
+import type { EditorView } from '@tiptap/pm/view';
 import { closeHistory } from '@tiptap/pm/history';
 import { collectionTypes, createCollection, type CollectionKind } from '../lib/collections';
 import { importLocalImage } from '../lib/localImages';
 import { blockViews, collectionIcons, editDocumentBlock } from './collections/DocumentBlocks';
 import { Options } from './collections/Fields';
+import { Select } from '../components/Select';
 import { Button, IconButton, Toolbar } from '../components/ui';
 import { documentExtensions, safeLink } from '../lib/documents';
 import { copyNoteSelection, pasteNoteSelection } from '../lib/noteClipboard';
 import { useApp } from '../state/AppState';
 import { allowsWeight, defaultEditorFont, editorTextStyles, editorTypographyVariables, findEditorFont, type EditorTextStyle } from '../lib/editorTypography';
-import { FontSelect, FontWeightField } from './EditorFontFields';
+import { ExactFontWeight, FontSelect, FontWeightField } from './EditorFontFields';
 import { canMoveBlock, moveBlock } from '../lib/editorBlocks';
 import { EditorActionButton, NotebookToolbar, useMobileEditor, type EditorAction, type ToolGroup, type ToolCategory } from './NotebookToolbar';
 
@@ -25,18 +28,39 @@ const highlightColors = [['Amarelo', '#f7e39b'], ['Verde', '#a9ebca'], ['Azul', 
 const extensions = documentExtensions.map((extension) =>
   extension.name === 'collection' ? blockViews.collection : extension.name === 'noteImage' ? blockViews.noteImage : extension);
 
+function selectionBeforeBlur(view: EditorView): Selection {
+  const { doc, selection } = view.state;
+  const browser = view.dom.ownerDocument.getSelection();
+  if (!(selection instanceof TextSelection) || !browser?.anchorNode || !browser.focusNode
+    || !view.dom.contains(browser.anchorNode) || !view.dom.contains(browser.focusNode)) return selection;
+  // The DOM can receive a selection change before ProseMirror's observer has flushed it.
+  const anchor = doc.resolve(view.posAtDOM(browser.anchorNode, browser.anchorOffset));
+  const head = doc.resolve(view.posAtDOM(browser.focusNode, browser.focusOffset));
+  return anchor.parent.inlineContent && head.parent.inlineContent
+    ? new TextSelection(anchor, head) : selection;
+}
+
 export function RichTextEditor({ content, onChange }: { content: JSONContent; onChange: (content: JSONContent) => void }) {
   const [toolPanel, setToolPanel] = useState<string | null>(null);
   const [link, setLink] = useState<string | null>(null);
   const [invalidLink, setInvalidLink] = useState(false);
-  const [popover, setPopover] = useState<'paste' | 'ink' | 'highlight' | 'insert' | 'collections' | null>(null);
+  const [popover, setPopover] = useState<'paste' | 'ink' | 'highlight' | 'weight' | null>(null);
   const { notify, data } = useApp();
   const fileInput = useRef<HTMLInputElement>(null);
+  const blurredSelection = useRef<{ doc: PMNode; selection: Selection }>(null);
   const mobile = useMobileEditor();
   const editor = useEditor({
     extensions,
     content,
-    editorProps: { attributes: { 'aria-label': 'Conteúdo da página', role: 'textbox', 'data-notebook-editor': '', 'aria-multiline': 'true', lang: 'pt-BR' } },
+    editorProps: {
+      attributes: { 'aria-label': 'Conteúdo da página', role: 'textbox', 'data-notebook-editor': '', 'aria-multiline': 'true', lang: 'pt-BR' },
+      handleDOMEvents: {
+        blur: (view) => {
+          blurredSelection.current = { doc: view.state.doc, selection: selectionBeforeBlur(view) };
+          return false;
+        },
+      },
+    },
     onUpdate: ({ editor }) => onChange(editor.getJSON()),
   });
   const tools = useEditorState({
@@ -75,7 +99,14 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
   });
 
   if (!editor || !tools) return null;
-  const focus = () => editor.chain().focus(undefined, { scrollIntoView: false });
+  const focus = () => {
+    const chain = editor.chain();
+    const saved = blurredSelection.current;
+    if (!editor.view.hasFocus() && saved?.doc === editor.state.doc) {
+      chain.command(({ tr }) => { tr.setSelection(saved.selection); return true; });
+    }
+    return chain.focus(undefined, { scrollIntoView: false });
+  };
   const closeTools = () => { setToolPanel(null); setPopover(null); };
   const closeLink = () => { closeTools(); setLink(null); setInvalidLink(false); focus().run(); };
   const applyLink = (event: React.FormEvent) => {
@@ -190,18 +221,17 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
     { label: 'Opções de colagem', icon: <ClipboardList size={17} />, pressed: popover === 'paste', run: () => toggle('paste') },
     { label: 'Recortar', icon: <Scissors size={17} />, disabled: !tools.selected, run: () => copy(true) },
   ];
-  const styleSelect = <select aria-label="Estilo" title="Estilo" value={tools.headingLevel} onChange={(event) => {
-    const level = Number(event.target.value) as 0 | 1 | 2 | 3 | 4 | 5 | 6;
-    if (level === 0) focus().setParagraph().run();
-    else focus().setHeading({ level }).run();
-  }}>
-    <option value="0">Corpo</option>
-    {editorTextStyles.slice(0, 6).map(([style, label], index) => <option key={style} value={index + 1}>{label}</option>)}
-  </select>;
+  const styleSelect = <Select label="Estilo" value={tools.headingLevel as number} returnFocus={false}
+    options={[[0, 'Corpo'], ...editorTextStyles.slice(0, 6).map(([, label], index) => [index + 1, label] as const)]}
+    onChange={(value) => {
+      const level = value as 0 | 1 | 2 | 3 | 4 | 5 | 6;
+      if (level === 0) focus().setParagraph().run();
+      else focus().setHeading({ level }).run();
+    }} />;
   const inlineFont = findEditorFont(tools.textStyle.fontFamily);
   const defaultFont = findEditorFont(data.profile.editorTypography[tools.style]?.font) ?? defaultEditorFont(tools.style);
   const effectiveFont = inlineFont ?? defaultFont;
-  const fontSelect = <FontSelect value={inlineFont?.name ?? tools.textStyle.fontFamily ?? ''} onChange={(name) => {
+  const fontSelect = <FontSelect returnFocus={false} value={inlineFont?.name ?? tools.textStyle.fontFamily ?? ''} onChange={(name) => {
     const font = findEditorFont(name);
     const chain = focus();
     if (font) chain.setFontFamily(font.family);
@@ -209,14 +239,14 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
     if (!allowsWeight(tools.textStyle.fontWeight, font ?? defaultFont)) chain.setMark('textStyle', { fontWeight: null }).removeEmptyTextStyle();
     chain.run();
   }} />;
-  const weightField = <FontWeightField key={effectiveFont.name} font={effectiveFont} value={tools.textStyle.fontWeight ?? undefined}
-    onChange={(weight) => focus().setMark('textStyle', { fontWeight: weight ?? null }).removeEmptyTextStyle().run()} />;
-  const sizeSelect = <select aria-label="Tamanho da fonte" title="Tamanho da fonte" value={tools.textStyle.fontSize ?? ''} onChange={(event) =>
-    event.target.value ? focus().setFontSize(event.target.value).run() : focus().unsetFontSize().run()}>
-    <option value="">Auto</option>
-    {tools.textStyle.fontSize && !sizes.some((size) => size + 'px' === tools.textStyle.fontSize) && <option value={tools.textStyle.fontSize}>{tools.textStyle.fontSize}</option>}
-    {sizes.map((size) => <option key={size} value={size + 'px'}>{size} px</option>)}
-  </select>;
+  const applyWeight = (weight?: number) => focus().setMark('textStyle', { fontWeight: weight ?? null }).removeEmptyTextStyle().run();
+  const weightField = <FontWeightField font={effectiveFont} value={tools.textStyle.fontWeight ?? undefined}
+    onChange={applyWeight} onCustom={() => toggle('weight')} />;
+  const sizeOptions: [string, string][] = [['', 'Auto'], ...sizes.map((size): [string, string] => [size + 'px', String(size)])];
+  const activeSize = tools.textStyle.fontSize ?? '';
+  if (activeSize && !sizeOptions.some(([value]) => value === activeSize)) sizeOptions.push([activeSize, activeSize]);
+  const sizeSelect = <Select label="Tamanho da fonte" returnFocus={false} value={activeSize} options={sizeOptions}
+    onChange={(value) => value ? focus().setFontSize(value).run() : focus().unsetFontSize().run()} />;
   const colorActions: EditorAction[] = [
     { label: 'Cor do texto', icon: <span className="note-ink-icon" style={{ borderColor: tools.textStyle.color || undefined }}>A</span>, pressed: popover === 'ink', run: () => toggle('ink') },
     { label: 'Cor de fundo', icon: <Highlighter size={18} />, pressed: tools.highlight || popover === 'highlight', run: () => toggle('highlight') },
@@ -230,8 +260,6 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
   const insertSet = (kind: CollectionKind) => insertContent({ type: 'collection', attrs: { value: createCollection(kind) } });
   const insertImage: EditorAction = { label: 'Inserir imagem', icon: <ImagePlus size={19} />,
     run: () => { closeTools(); fileInput.current?.click(); } };
-  const setAction: EditorAction = { label: 'Inserir conjunto', icon: <LayoutGrid size={18} />, pressed: popover === 'collections',
-    run: () => toggle('collections') };
   const contextualBlock = tools.selectedBlock === 'collection' || tools.selectedBlock === 'noteImage';
   const propertyAction: EditorAction = { label: tools.selectedBlock === 'collection' ? 'Configurar conjunto selecionado' : 'Propriedades da imagem',
     icon: <SlidersHorizontal size={17} />, run: () => {
@@ -248,17 +276,24 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
       if (value === tools.pageWidth) return;
       editor.view.dispatch(closeHistory(editor.state.tr.setDocAttribute('noteWidth', value === 'standard' ? null : value)));
     }} />;
-  const insertCommands = [insertImage, insertTable, linkAction, setAction, quote, code, separator];
+  const insertSets = Object.entries(collectionTypes).map(([key, definition]): EditorAction => {
+    const kind = key as CollectionKind;
+    const Icon = collectionIcons[kind];
+    return { label: 'Inserir ' + definition.label.toLocaleLowerCase('pt-BR'), icon: <Icon size={17} />, run: () => insertSet(kind) };
+  });
+  const insertion = <div className="note-ribbon-insertion" role="group" aria-label="Inserir">
+    <span className="note-tool-label">Inserir</span>
+    <div className="note-insert-actions">{group([insertImage, insertTable, linkAction, ...insertSets, quote, code, separator])}</div>
+  </div>;
   const context: ToolGroup[] = tools.table ? [{ label: 'Linhas e colunas', rows: [group(table)] }]
     : contextualBlock ? [{ label: 'Elemento selecionado', rows: [group([propertyAction, ...blocks.slice(2)])] }] : [];
   const supplemental: ToolGroup[] = [
-    { label: 'Peso da fonte', rows: [weightField] },
     { label: 'Formatação', rows: [group([...colorActions, clear, lists[2]]), lineHeight] },
     { label: 'Página e blocos', rows: [pageWidth, group(blocks.slice(2))] },
   ];
   const categories: ToolCategory[] = [
     { id: 'format', label: 'Texto', icon: <Type size={19} />, groups: [
-      { label: 'Estilo e fonte', rows: [<>{styleSelect}{fontSelect}{sizeSelect}</>, group(marks)] },
+      { label: 'Estilo e fonte', rows: [<>{styleSelect}{fontSelect}{weightField}{sizeSelect}</>, group(marks)] },
       { label: 'Listas e parágrafo', rows: [group(lists), group([...align, ...blocks.slice(0, 2)])] },
       ...supplemental,
       { label: 'Área de transferência', rows: [group(clipboard)] },
@@ -268,14 +303,13 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
   ];
   const ribbon = <>
     <div className="note-ribbon-clipboard" role="group" aria-label="Área de transferência">
-      <div className="note-ribbon-paste">
-        <Button variant="ghost" size="sm" icon={clipboard[0].icon} onMouseDown={(event) => event.preventDefault()} onClick={clipboard[0].run}>Colar</Button>
-        <EditorActionButton action={clipboard[2]} />
-      </div>
-      <div className="note-ribbon-copy"><EditorActionButton action={clipboard[1]} /><EditorActionButton action={clipboard[3]} /></div>
+      <Button variant="ghost" size="sm" className="note-ribbon-paste" icon={clipboard[0].icon}
+        onMouseDown={(event) => event.preventDefault()} onClick={clipboard[0].run}>Colar</Button>
+      <EditorActionButton action={clipboard[1]} />
+      <div className="note-clipboard-secondary">{group([clipboard[2], clipboard[3]])}</div>
     </div>
     <div className="note-ribbon-font" role="group" aria-label="Estilo e fonte">
-      <div className="note-ribbon-font-selects">{styleSelect}{fontSelect}{sizeSelect}</div>
+      <div className="note-ribbon-font-selects">{styleSelect}{fontSelect}{weightField}{sizeSelect}</div>
       <div className="note-ribbon-marks">{group(marks)}</div>
     </div>
     <div className="note-ribbon-paragraph" role="group" aria-label="Parágrafo">
@@ -284,7 +318,7 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
     </div>
   </>;
   const title = popover === 'paste' ? 'Opções de colagem' : popover === 'ink' ? 'Cor do texto' : popover === 'highlight'
-    ? 'Cor de fundo' : popover === 'collections' ? 'Inserir conjunto' : 'Inserir';
+    ? 'Cor de fundo' : 'Peso da fonte';
   const setColor = (color?: string) => {
     setPopover(null);
     const chain = focus();
@@ -294,18 +328,8 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
   const extra = linkForm || (popover && <section className="note-ribbon-panel" aria-label={title}>
     <div className="nw-section-heading"><strong>{title}</strong>
       <IconButton label="Fechar opções" onClick={() => { setPopover(null); focus().run(); }}>×</IconButton></div>
-    {popover === 'insert' ? <Toolbar>{insertCommands.map((action) =>
-      <Button key={action.label} size="sm" variant="ghost" disabled={action.disabled} icon={action.icon}
-        onMouseDown={(event) => event.preventDefault()} onClick={action.run}>{action.label}</Button>)}</Toolbar>
-    : popover === 'collections' ? <div className="collection-insert">
-      {Object.entries(collectionTypes).map(([key, definition]) => {
-        const kind = key as CollectionKind;
-        const Icon = collectionIcons[kind];
-        return <Button key={kind} size="sm" icon={<Icon size={18} />} onMouseDown={(event) => event.preventDefault()} onClick={() => insertSet(kind)}>
-          <span><strong>{definition.label}</strong><small>{definition.description}</small></span>
-        </Button>;
-      })}
-    </div> : popover === 'paste' ? <Toolbar>
+    {popover === 'weight' ? <ExactFontWeight font={effectiveFont} value={tools.textStyle.fontWeight ?? undefined} autoFocus
+      onChange={(weight) => { setPopover(null); applyWeight(weight); }} /> : popover === 'paste' ? <Toolbar>
       <Button size="sm" onMouseDown={(event) => event.preventDefault()} onClick={() => paste(false)}>Manter formatação</Button>
       <Button size="sm" onMouseDown={(event) => event.preventDefault()} onClick={() => paste(true)}>Somente texto</Button>
     </Toolbar> : <Toolbar>
@@ -332,9 +356,13 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
       } catch (error) { notify(error instanceof Error ? error.message : 'Não foi possível inserir a imagem.'); }
     }} />
     <NotebookToolbar simple={{ history: group(history), text: <>{styleSelect}{group(marks.slice(0, 3))}</>,
-      lists: group(lists), insert: <Plus size={21} /> }} ribbon={ribbon} supplemental={supplemental} categories={categories} panel={toolPanel} setPanel={setToolPanel} extra={extra} mobile={mobile}
-      clearExtra={() => { setPopover(null); setLink(null); }} showInsert={() => toggle('insert')}
-      dismissKeyboard={() => { if (link !== null && document.activeElement instanceof HTMLElement) document.activeElement.blur(); else editor.commands.blur(); }} />
+      lists: group(lists), insertIcon: <Plus size={21} /> }} ribbon={ribbon} insertion={insertion} supplemental={supplemental} categories={categories} panel={toolPanel} setPanel={setToolPanel} extra={extra} mobile={mobile}
+      clearExtra={() => { setPopover(null); setLink(null); }}
+      dismissKeyboard={() => {
+        const active = document.activeElement;
+        if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) active.blur();
+        else editor.commands.blur();
+      }} />
     <EditorContent editor={editor} className="document-content" data-width={tools.pageWidth}
       style={editorTypographyVariables(data.profile.editorTypography) as CSSProperties} />
   </div>;

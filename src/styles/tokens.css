@@ -47,6 +47,8 @@
   --subject-blue: #e5edf9; --subject-blue-ink: #335a87;
   --subject-peach: var(--amber-soft); --subject-peach-ink: var(--amber);
   --subject-rose: #fae9ec; --subject-rose-ink: #8b4054;
+  --corner-shape: squircle;
+  --workspace-nav-height: 51px;
   --radius-sm: 12px;
   --radius-md: 18px;
   --radius-lg: 24px;
@@ -112,4 +114,8 @@
   animation-duration: .01ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: .01ms !important;
+}
+
+@supports (corner-shape: squircle) {
+  *, *::before, *::after { corner-shape: var(--corner-shape); }
 }

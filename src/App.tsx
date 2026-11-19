@@ -149,7 +149,7 @@ function AppContent() {
       event.preventDefault();
       document.getElementById('main-content')?.focus();
     }}>Ir para o conteúdo</a>
-    {!noteId && <WorkspaceNavigation current={route.area} search={() => setSheet({ kind: 'search' })} settings={() => setSheet({ kind: 'settings' })} />}
+    <WorkspaceNavigation current={route.area} search={() => setSheet({ kind: 'search' })} settings={() => setSheet({ kind: 'settings' })} />
     <main className={'nw-main' + (noteId ? ' document-workspace' : '')} id="main-content" tabIndex={-1}>
       <motion.div key={routeKey} initial={reduce ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
         transition={reduce ? { duration: 0 } : springs.panel}>

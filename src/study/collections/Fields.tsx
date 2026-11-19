@@ -1,6 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowDown, ArrowUp } from 'lucide-react';
+import { Select } from '../../components/Select';
 import { ElasticSheet } from '../../components/ElasticSheet';
 import { Button, IconButton, Toolbar } from '../../components/ui';
 import { importLocalImage } from '../../lib/localImages';
@@ -13,10 +14,7 @@ export function CollectionSheet({ title, close, children }: { title: string; clo
 export function Options<T extends string | number>({ label, value, options, onChange }: {
   label: string; value: T; options: readonly (readonly [T, string])[]; onChange: (value: T) => void;
 }) {
-  return <label className="field-label">{label}<select aria-label={label} className="ds-input" value={value} onChange={(event) => {
-    const option = options.find(([key]) => String(key) === event.target.value);
-    if (option) onChange(option[0]);
-  }}>{options.map(([key, name]) => <option value={key} key={key}>{name}</option>)}</select></label>;
+  return <div className="field-label">{label}<Select label={label} value={value} options={options} onChange={onChange} /></div>;
 }
 
 export const orientations = [['vertical', 'Vertical'], ['horizontal', 'Horizontal']] as const;

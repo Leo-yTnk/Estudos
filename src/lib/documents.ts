@@ -1,10 +1,11 @@
-import { Extension, getSchema, type JSONContent } from '@tiptap/core';
+import { Extension, Mark, getSchema, type JSONContent } from '@tiptap/core';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { TableKit } from '@tiptap/extension-table';
 import Highlight from '@tiptap/extension-highlight';
 import TextAlign from '@tiptap/extension-text-align';
 import { TextStyleKit } from '@tiptap/extension-text-style';
 import StarterKit from '@tiptap/starter-kit';
+import { CollectionBlock, NoteImage, collectionText, localImage, readCollection } from './collections';
 import type { NoteBlock, StudyNote } from '../types';
 
 export function safeLink(value: string) {
@@ -35,15 +36,27 @@ const paragraphIndent = Extension.create({
   },
 });
 
+const scriptMark = (name: string, tag: string, opposite: string) => Mark.create({
+  name, excludes: opposite,
+  parseHTML: () => [{ tag }],
+  renderHTML: () => [tag, 0],
+});
+
 export const documentExtensions = [
+  Extension.create({
+    name: 'noteLayout',
+    addGlobalAttributes: () => [{ types: ['doc'], attributes: { noteWidth: { default: null } } }],
+  }),
   StarterKit.configure({
     heading: { levels: [2, 3] },
     link: { openOnClick: false, defaultProtocol: 'https', isAllowedUri: (url) => !!safeLink(url) },
   }),
   TableKit.configure({ table: { renderWrapper: true } }),
   Highlight.configure({ multicolor: true }),
-  TextStyleKit.configure({ backgroundColor: false, lineHeight: false }),
+  TextStyleKit.configure({ backgroundColor: false }),
   paragraphIndent,
+  CollectionBlock, NoteImage,
+  scriptMark('superscript', 'sup', 'subscript'), scriptMark('subscript', 'sub', 'superscript'),
   TextAlign.configure({ types: ['paragraph', 'heading'], alignments: ['left', 'center', 'right', 'justify'] }),
   TaskList,
   TaskItem.configure({ nested: true }),
@@ -87,7 +100,23 @@ export function validateDocument(value: unknown): JSONContent | undefined {
     node.descendants((item) => {
       if (item.marks.some((mark) => mark.type.name === 'link' && !safeLink(String(mark.attrs.href)))) valid = false;
     });
-    return valid ? node.toJSON() : undefined;
+    if (!valid) return undefined;
+    const json = node.toJSON() as JSONContent;
+    const normalize = (item: JSONContent) => {
+      if (item.type === 'collection') item.attrs = { value: readCollection(item.attrs?.value) };
+      if (item.type === 'noteImage') {
+        const width = Number(item.attrs?.width);
+        item.attrs = { image: localImage(item.attrs?.image),
+          width: Number.isFinite(width) ? Math.min(100, Math.max(25, width)) : 100,
+          align: ['left', 'right'].includes(item.attrs?.align) ? item.attrs?.align : 'center' };
+      }
+      item.content?.forEach(normalize);
+    };
+    if (json.attrs) {
+      if (!['narrow', 'wide'].includes(json.attrs.noteWidth)) delete json.attrs;
+    }
+    normalize(json);
+    return json;
   } catch { return undefined; }
 }
 
@@ -95,6 +124,8 @@ export function noteText(note: StudyNote) {
   if (!note.content) return note.blocks.map(({ text, url }) => [text, url].filter(Boolean).join(' ')).join(' ');
   const pieces: string[] = [];
   const visit = (item: JSONContent) => {
+    if (item.type === 'collection') pieces.push(collectionText(readCollection(item.attrs?.value)));
+    if (item.type === 'noteImage') pieces.push(localImage(item.attrs?.image)?.alt ?? '');
     if (item.text) pieces.push(item.text);
     for (const mark of item.marks ?? []) {
       if (mark.type === 'link' && mark.attrs?.href) pieces.push(String(mark.attrs.href));

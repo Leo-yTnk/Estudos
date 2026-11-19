@@ -75,7 +75,6 @@ function Settings() {
     event.target.value = '';
     if (!file) return;
     try {
-      if (file.size > 8_000_000) throw new Error('Arquivo muito grande.');
       const content = JSON.parse(await file.text());
       const restored = validateData(content);
       if (window.confirm('Importar este backup substituirá todos os registros locais. Continuar?')) app.restore(restored);
@@ -96,6 +95,16 @@ function Settings() {
           {label}{data.profile.theme === value && <Check size={15}/>}</button>)}</div>
       <label className="toggle-row"><span><strong>Reduzir movimento</strong><small>Desativa molas e movimentos não essenciais; a preferência do dispositivo também é respeitada.</small></span>
         <input type="checkbox" checked={data.profile.reducedMotion} onChange={(e) => app.updateProfile({reducedMotion:e.target.checked})}/></label>
+    </div>
+    <div className="settings-group"><div className="settings-group-title">Editor</div>
+      <div className="settings-label">Modo da toolbar</div>
+      <div className="settings-options" role="group" aria-label="Modo da toolbar">
+        {(['simple', 'advanced'] as const).map((mode) => <button type="button" key={mode}
+          className={'setting-option ' + (data.profile.toolbarMode === mode ? 'active' : '')}
+          aria-pressed={data.profile.toolbarMode === mode} onClick={() => app.updateProfile({ toolbarMode: mode })}>
+          {mode === 'simple' ? 'Simplificado' : 'Avançado'}{data.profile.toolbarMode === mode && <Check size={15} />}
+        </button>)}
+      </div>
     </div>
     <div className="settings-group"><div className="settings-group-title">Seus dados</div>
       <p className="settings-description"><ShieldCheck size={17}/> Suas informações ficam neste navegador. Nenhum cadastro ou servidor é necessário.</p>

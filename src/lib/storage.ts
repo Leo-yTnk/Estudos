@@ -101,6 +101,7 @@ export function validateData(value: unknown): AppData {
       energy: [1,2,3].includes(profile.energy) ? profile.energy : 2,
       theme: ['light','dark','system'].includes(profile.theme) ? profile.theme : 'system',
       reducedMotion: !!profile.reducedMotion,
+      toolbarMode: profile.toolbarMode === 'advanced' ? 'advanced' : 'simple',
     },
     subjects, subjectVisits, notes, flashcards, entries, rewards, activity,
     focus: obj.focus && typeof obj.focus.entryId === 'string' && typeof obj.focus.startedAt === 'string' ? obj.focus : null,

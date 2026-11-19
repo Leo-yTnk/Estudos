@@ -1,8 +1,11 @@
 import type { EditorState } from '@tiptap/pm/state';
-import { TextSelection } from '@tiptap/pm/state';
+import { NodeSelection, TextSelection } from '@tiptap/pm/state';
 
 function currentBlock({ doc, selection }: EditorState) {
   const { $from, $to } = selection;
+  if (selection instanceof NodeSelection && !$from.depth) {
+    return { index: $from.index(0), node: selection.node, start: selection.from };
+  }
   if (!(selection instanceof TextSelection) || $from.index(0) !== $to.index(0) || !$from.depth || !$to.depth) return null;
   const index = $from.index(0);
   const node = doc.child(index);
@@ -26,5 +29,7 @@ export function moveBlock(state: EditorState, direction: -1 | 1) {
   const from = direction < 0 ? start + delta : start;
   const to = direction < 0 ? start + node.nodeSize : start + node.nodeSize + delta;
   const transaction = state.tr.replaceWith(from, to, direction < 0 ? [node, neighbor] : [neighbor, node]);
-  return transaction.setSelection(TextSelection.create(transaction.doc, anchor + delta, head + delta));
+  return transaction.setSelection(state.selection instanceof NodeSelection
+    ? NodeSelection.create(transaction.doc, start + delta)
+    : TextSelection.create(transaction.doc, anchor + delta, head + delta));
 }

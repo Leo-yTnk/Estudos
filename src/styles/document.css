@@ -92,7 +92,7 @@
 }
 .note-ribbon-group {
   display: grid;
-  grid-template-rows: repeat(2, 38px) auto;
+  grid-template-rows: repeat(2, minmax(38px, auto)) auto;
   flex: 0 0 auto;
   min-width: max-content;
   padding-inline: var(--space-2);
@@ -100,9 +100,9 @@
 .note-ribbon-group + .note-ribbon-group { border-left: 1px solid var(--line); }
 .note-ribbon-row { display: flex; align-items: center; gap: 2px; min-width: 0; }
 .note-ribbon-row .ds-icon-button { width: 38px; min-width: 38px; min-height: 36px; }
-.note-ribbon-label { color: var(--secondary); font-size: 11px; text-align: center; padding: 2px 4px; }
+.note-ribbon-label { align-self: end; grid-row: 3; color: var(--secondary); font-size: 11px; text-align: center; padding: 2px 4px; }
 .note-format-selects { display: flex; gap: 4px; min-width: 0; }
-.note-format-selects select {
+.note-format-selects select, .note-ribbon-row > select {
   min-width: 0;
   max-width: 104px;
   height: 32px;
@@ -111,7 +111,7 @@
   background: var(--surface-soft);
   color: var(--ink);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--text-control);
 }
 .note-ink-icon { border-bottom: 3px solid var(--accent); font-weight: 750; }
 .note-ribbon-panel, .note-ribbon .document-link-form {
@@ -127,9 +127,23 @@
 }
 .note-color-swatch[aria-pressed='true'] { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+
+.document-content[data-width='narrow'] { max-width: 650px; }
+.document-content[data-width='wide'] { max-width: none; }
+.note-simple { display: flex; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1); }
+.note-simple > .note-ribbon-row + .note-ribbon-row { padding-inline-start: var(--space-1); border-inline-start: 1px solid var(--line); }
+.note-expanded { border-top: 1px solid var(--line); }
+.note-ribbon .ds-segment, .note-dock .ds-segment { flex-wrap: wrap; padding: var(--space-1); }
+.note-ribbon-row > .field-label { display: flex; align-items: center; gap: var(--space-1); padding-inline: var(--space-2); white-space: nowrap; }
+.note-ribbon-row > .field-label .ds-input { min-height: 32px; padding: 3px var(--space-2); }
+.collection-insert { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); gap: var(--space-2); }
+.collection-insert .btn { justify-content: flex-start; align-items: center; text-align: start; padding: var(--space-2) var(--space-3); white-space: normal; }
+.collection-insert .btn span { display: grid; gap: var(--space-1); }
+.collection-insert small { color: var(--secondary); }
+
 @media (max-width: 800px) {
-  .nw-main.document-workspace { padding-bottom: calc(225px + env(safe-area-inset-bottom)); }
-  .document-sheet { min-height: calc(100dvh - 280px); }
+  .nw-main.document-workspace { padding-bottom: calc(145px + env(safe-area-inset-bottom)); }
+  .document-sheet { min-height: calc(100dvh - 210px); }
   .document-content .tiptap { min-height: 250px; }
   body:has(.note-dock[data-keyboard='true']) .workspace-primary { visibility: hidden; }
   .note-dock {
@@ -147,30 +161,24 @@
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-nav);
   }
-  .note-dock-bar { position: relative; padding: var(--space-1) var(--space-2); }
-  .note-dock-sections { display: flex; gap: 3px; border-bottom: 1px solid var(--line); }
-  .note-dock-sections > button {
-    flex: 1;
-    min-width: 0;
-    min-height: 34px;
-    display: grid;
-    position: relative;
-    isolation: isolate;
-    place-items: center;
-    border: 0;
-    border-radius: 8px;
-    background: transparent;
-    color: var(--secondary);
-    font: inherit;
-  }
-  .note-dock-sections > button[aria-pressed='true'] { color: var(--accent); }
-  .note-mobile-active { position: absolute; z-index: -1; inset: 2px 0; background: var(--accent-soft); border-radius: inherit; }
-  .note-mobile-group { display: grid; grid-template-rows: repeat(2, 40px); padding-top: 2px; }
-  .note-mobile-group .note-ribbon-row .ds-icon-button { min-height: 38px; width: 40px; min-width: 40px; }
+  .note-dock-bar { padding: var(--space-1); }
+  .note-dock-actions { display: flex; justify-content: space-around; }
+  .note-dock-actions .ds-icon-button { min-width: clamp(36px, 12vw, 44px); min-height: 44px; padding: 0; }
+  .note-dock-actions [aria-expanded='true'] { color: var(--accent); background: var(--accent-soft); }
   .note-dock .note-ribbon-panel, .note-dock .document-link-form {
     margin: 0;
-    max-height: min(175px, 35dvh);
+    max-height: min(300px, 45dvh);
     overflow-y: auto;
   }
-  body:has(.note-dock) .nw-shell .toast { bottom: calc(199px + env(safe-area-inset-bottom)); }
+  .note-dock .note-expanded .note-ribbon-groups {
+    display: grid;
+    max-height: min(280px, 40dvh);
+    overflow: auto;
+  }
+  .note-dock .note-expanded .note-ribbon-group { min-width: 0; grid-template-rows: auto; }
+  .note-dock .note-expanded .note-ribbon-group + .note-ribbon-group { border: 0; border-top: 1px solid var(--line); }
+  .note-dock .note-expanded .note-ribbon-row { flex-wrap: wrap; min-height: 40px; }
+  .note-dock .note-expanded .note-ribbon-label { grid-row: auto; grid-column: 1; justify-self: start; }
+  .note-dock .note-expanded .note-ribbon-row .ds-icon-button { min-height: 42px; min-width: 42px; }
+  body:has(.note-dock) .nw-shell .toast { bottom: calc(124px + env(safe-area-inset-bottom)); }
 }

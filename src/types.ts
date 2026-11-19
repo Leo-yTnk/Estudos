@@ -73,6 +73,7 @@ export interface AppData {
     energy: Energy;
     theme: Theme;
     reducedMotion: boolean;
+    toolbarMode: 'simple' | 'advanced';
   };
   subjects: Subject[];
   subjectVisits: SubjectVisit[];
@@ -88,7 +89,7 @@ export interface AppData {
 export function emptyData(): AppData {
   return {
     version: 1,
-    profile: { name: '', energy: 2, theme: 'system', reducedMotion: false },
+    profile: { name: '', energy: 2, theme: 'system', reducedMotion: false, toolbarMode: 'simple' },
     subjects: [
       { id: 'math', icon: 'calculator', title: 'Matemática', color: 'mint' },
       { id: 'portuguese', icon: 'pen-nib', title: 'Português', color: 'violet' },

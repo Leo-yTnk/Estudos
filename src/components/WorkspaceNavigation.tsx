@@ -43,7 +43,9 @@ export function WorkspaceNavigation({ current, search, settings, canBack, canFor
           <IconButton label="Buscar" type="submit" aria-keyshortcuts="Control+K Meta+K"><Search size={17} /></IconButton>
           <input aria-label="Pesquisar no NowWork" placeholder="Pesquisar" type="search" value={query} onChange={(event) => setQuery(event.target.value)} />
         </form>
-        <IconButton label="Configurações" onClick={settings}><Settings2 size={19} /></IconButton>
+        <IconButton label="Configurações" onMouseDown={(event) => {
+          if (document.activeElement?.closest('[data-notebook-editor]')) event.preventDefault();
+        }} onClick={settings}><Settings2 size={19} /></IconButton>
       </Toolbar>
     </div>
   </header>;

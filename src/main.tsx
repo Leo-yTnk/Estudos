@@ -7,6 +7,7 @@ import './styles/system.css';
 import './styles/workspace.css';
 import './styles/navigation.css';
 import './styles/document.css';
+import './styles/collections.css';
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode><App /></React.StrictMode>,

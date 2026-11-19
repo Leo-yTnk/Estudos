@@ -1,8 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { KeyboardOff } from 'lucide-react';
-import { IconButton } from '../components/ui';
+import { KeyboardOff, List, Plus, SlidersHorizontal, Type } from 'lucide-react';
+import { IconButton, Segment } from '../components/ui';
 import { springs } from '../lib/motion';
 import { useApp } from '../state/AppState';
 
@@ -55,50 +55,79 @@ function useKeyboardInset(enabled: boolean) {
   return inset;
 }
 
-export interface RibbonGroup {
-  label: string;
-  short: ReactNode;
-  rows: [ReactNode, ReactNode];
+export interface RibbonGroup { label: string; rows: ReactNode[] }
+export interface RibbonTab { id: string; label: string; groups: RibbonGroup[] }
+
+export function RibbonGroups({ groups }: { groups: RibbonGroup[] }) {
+  return <div className="note-ribbon-groups" aria-label="Ferramentas do caderno" role="group">
+    {groups.map(({ label, rows }) => <div key={label} className="note-ribbon-group" role="group" aria-label={label}>
+      {rows.map((row, index) => <div key={index} className="note-ribbon-row">{row}</div>)}
+      <span className="note-ribbon-label" aria-hidden="true">{label}</span>
+    </div>)}
+  </div>;
 }
 
-export function NotebookToolbar({ groups, mobile, extra, dismissKeyboard }: {
-  groups: RibbonGroup[]; mobile: boolean; extra?: ReactNode; dismissKeyboard: () => void;
+export function NotebookToolbar({ simple, tabs, mobile, extra, dismissKeyboard, showInsert, clearExtra }: {
+  simple: { history: ReactNode; text: ReactNode; lists: ReactNode; insert: ReactNode };
+  tabs: RibbonTab[]; mobile: boolean; extra?: ReactNode; dismissKeyboard: () => void; showInsert: () => void; clearExtra: () => void;
 }) {
-  const [active, setActive] = useState(1);
+  const [tab, setTab] = useState('home');
+  const [expanded, setExpanded] = useState(false);
+  const [mobileGroup, setMobileGroup] = useState<'text' | 'lists' | null>(null);
   const inset = useKeyboardInset(mobile);
   const reduced = useReducedMotion();
   const { data } = useApp();
-  const animate = !reduced && !data.profile.reducedMotion;
+  const { toolbarMode, reducedMotion } = data.profile;
+  const advanced = toolbarMode === 'advanced';
+  const animate = !reduced && !reducedMotion;
+  const shownTab = tabs.find(({ id }) => id === tab) ?? tabs[0];
+  useEffect(() => { setExpanded(false); setMobileGroup(null); }, [toolbarMode, mobile]);
+  useEffect(() => { if (shownTab.id !== tab) setTab(shownTab.id); }, [shownTab.id, tab]);
+
+  const advancedContent = <>
+    <Segment label="Guias da toolbar" options={tabs} value={shownTab.id} onChange={(value) => { clearExtra(); setTab(value); }} />
+    <RibbonGroups groups={shownTab.groups} />
+  </>;
+  const toggleAdvanced = () => { clearExtra(); setMobileGroup(null); setExpanded(!expanded); };
+  const aa = <IconButton label="Formatação adicional" aria-expanded={expanded}
+    onMouseDown={(event) => event.preventDefault()} onClick={toggleAdvanced}><strong>Aa</strong></IconButton>;
 
   if (!mobile) return <div className="note-ribbon">
-    <div className="note-ribbon-groups" aria-label="Ferramentas do caderno" role="group">
-      {groups.map(({ label, rows }) => <div key={label} className="note-ribbon-group" role="group" aria-label={label}>
-        {rows.map((row, index) => <div key={index} className="note-ribbon-row">{row}</div>)}
-        <span className="note-ribbon-label" aria-hidden="true">{label}</span>
-      </div>)}
-    </div>
+    {advanced ? advancedContent : <>
+      <div className="note-simple" role="group" aria-label="Ferramentas do caderno">
+        <div className="note-ribbon-row">{simple.history}</div><div className="note-ribbon-row">{simple.text}</div>
+        <div className="note-ribbon-row">{simple.lists}</div><div className="note-ribbon-row">{simple.insert}{aa}</div>
+      </div>
+      {expanded && <div className="note-expanded">{advancedContent}</div>}
+    </>}
     {extra}
   </div>;
 
   return createPortal(<aside className="note-dock" aria-label="Ferramentas do caderno" data-keyboard={inset > 0}
-    style={inset ? { bottom: inset + 8 } : undefined}>
+    style={inset ? { bottom: inset + 8 } : undefined} onKeyDown={(event) => {
+      if (event.key === 'Escape') { clearExtra(); setExpanded(false); setMobileGroup(null); }
+    }}>
     {extra}
-    <div className="note-dock-bar">
-      <div className="note-dock-sections" role="group" aria-label="Seções da barra">
-        {groups.map(({ label, short }, index) => <button key={label} type="button" aria-label={label}
-          title={label} aria-pressed={active === index} onMouseDown={(event) => event.preventDefault()}
-          onClick={() => setActive(index)}>{active === index && <motion.span layoutId={animate ? 'ribbon-active' : undefined}
-            transition={animate ? springs.panel : { duration: 0 }} className="note-mobile-active" aria-hidden="true" />}{short}</button>)}
-        {inset > 0 && <IconButton label="Recolher teclado" onMouseDown={(event) => event.preventDefault()}
-          onClick={dismissKeyboard}><KeyboardOff size={17} /></IconButton>}
-      </div>
-      <AnimatePresence mode="popLayout" initial={false}>
-        <motion.div key={active} role="group" aria-label={groups[active].label} className="note-mobile-group"
-          initial={animate ? { opacity: 0, x: 5 } : false} animate={{ opacity: 1, x: 0 }}
-          exit={animate ? { opacity: 0, transition: { duration: .1 } } : undefined} transition={animate ? springs.panel : { duration: 0 }}>
-          {groups[active].rows.map((row, index) => <div key={index} className="note-ribbon-row">{row}</div>)}
-        </motion.div>
-      </AnimatePresence>
+    <AnimatePresence initial={false}>
+      {(expanded || mobileGroup) && <motion.div key={expanded ? 'advanced' : mobileGroup} className="note-expanded note-dock-bar"
+        initial={animate ? { opacity: 0, y: 10 } : false} animate={{ opacity: 1, y: 0 }}
+        exit={animate ? { opacity: 0, y: 5 } : undefined} transition={animate ? springs.panel : { duration: 0 }}>
+        {expanded ? advancedContent : <div className="note-ribbon-row">{mobileGroup === 'text' ? simple.text : simple.lists}</div>}
+      </motion.div>}
+    </AnimatePresence>
+    <div className="note-dock-bar note-dock-actions" role="group" aria-label="Seções da barra">
+      {simple.history}
+      {advanced ? <IconButton label="Guias e ferramentas avançadas" aria-expanded={expanded}
+        onMouseDown={(event) => event.preventDefault()} onClick={toggleAdvanced}><SlidersHorizontal size={19} /></IconButton> : <>
+        {([['text', 'Texto', Type], ['lists', 'Listas', List]] as const).map(([id, label, Icon]) =>
+          <IconButton key={id} label={label} aria-expanded={mobileGroup === id} onMouseDown={(event) => event.preventDefault()}
+            onClick={() => { clearExtra(); setExpanded(false); setMobileGroup(mobileGroup === id ? null : id); }}><Icon size={20} /></IconButton>)}
+      </>}
+      <IconButton label={advanced ? "Menu de inserção" : "Inserir"} onMouseDown={(event) => event.preventDefault()}
+        onClick={() => { setMobileGroup(null); setExpanded(false); showInsert(); }}><Plus size={21} /></IconButton>
+      {!advanced && aa}
+      {inset > 0 && <IconButton label="Recolher teclado" onMouseDown={(event) => event.preventDefault()}
+        onClick={dismissKeyboard}><KeyboardOff size={18} /></IconButton>}
     </div>
   </aside>, document.body);
 }

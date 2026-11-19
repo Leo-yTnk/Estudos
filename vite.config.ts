@@ -47,7 +47,8 @@ self.addEventListener('fetch', event => {
   if (event.request.mode === 'navigate') {
     event.respondWith(fetch(event.request).catch(async () => (await (await caches.open(version)).match(appShell)) || Response.error()));
   } else if (assets.has(url.href)) {
-    event.respondWith((async () => (await (await caches.open(version)).match(event.request)) || fetch(event.request))());
+    // Precached build assets have one representation even when the host varies its CORS headers.
+    event.respondWith((async () => (await (await caches.open(version)).match(url.href, { ignoreVary: true })) || fetch(event.request))());
   }
 });
 ` });

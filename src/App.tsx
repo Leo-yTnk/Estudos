@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { Check, CircleHelp, Coffee, Download, Pencil, ShieldCheck, Sparkles, Trash2, Upload, X } from 'lucide-react';
+import { ArrowLeft, Check, CircleHelp, Coffee, Download, Pencil, ShieldCheck, Sparkles, Trash2, Upload, X } from 'lucide-react';
 import { AppProvider, useApp } from './state/AppState';
 import { ElasticSheet } from './components/ElasticSheet';
 import { Button, IconButton, PageHeading, Stack } from './components/ui';
@@ -13,25 +13,45 @@ import { validateData } from './lib/storage';
 import { springs } from './lib/motion';
 import type { Subject, Theme } from './types';
 import { Dashboard } from './study/Dashboard';
-import { Subjects, SubjectRail, SubjectMark } from './study/Subjects';
+import { Subjects, SubjectMark } from './study/Subjects';
 import { Tasks, Week } from './study/Planner';
 import { Notebook } from './study/Notebook';
 import { Review } from './study/Review';
 import { WorkspaceSearch, TaskForm, SubjectForm } from './study/WorkspacePanels';
 
-type Sheet = { kind: 'settings' | 'break' | 'search' } | { kind: 'task'; subjectId?: string; dueAt?: string | null } | { kind: 'subject'; subject?: Subject };
+type Sheet = { kind: 'settings' | 'break' } | { kind: 'search'; query: string } | { kind: 'task'; subjectId?: string; dueAt?: string | null } | { kind: 'subject'; subject?: Subject };
 
 function useWorkspaceRoute() {
   const [hash, setHash] = useState(() => window.location.hash);
-  const route = parseRoute(hash);
+  const [position, setPosition] = useState(0);
+  const [last, setLast] = useState(0);
+  const currentPosition = useRef(0);
   useEffect(() => {
-    const sync = () => setHash(window.location.hash);
+    const replacePosition = (index: number) => window.history.replaceState({ ...window.history.state, nowWorkPosition: index }, '');
+    const start = 0;
+    currentPosition.current = start;
+    replacePosition(start);
+    const sync = () => {
+      const previous = currentPosition.current;
+      const saved = window.history.state?.nowWorkPosition;
+      const next = Number.isInteger(saved) ? saved : previous + 1;
+      if (!Number.isInteger(saved)) {
+        replacePosition(next);
+        setLast(next);
+      }
+      currentPosition.current = next;
+      setPosition(next);
+      setHash(window.location.hash);
+    };
     window.addEventListener('hashchange', sync);
     return () => window.removeEventListener('hashchange', sync);
   }, []);
   useEffect(() => { window.scrollTo(0, 0); }, [hash]);
   const open = (next: Route) => { window.location.hash = routeHref(next); };
-  return { route, open };
+  return {
+    route: parseRoute(hash), open, canBack: position > 0, canForward: position < last,
+    back: () => window.history.back(), forward: () => window.history.forward(),
+  };
 }
 
 function Settings() {
@@ -100,11 +120,18 @@ function Settings() {
 
 function AppContent() {
   const app = useApp();
-  const { route, open } = useWorkspaceRoute();
+  const { route, open, ...navigation } = useWorkspaceRoute();
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const systemReduced = useReducedMotion();
   const reduce = !!systemReduced || app.data.profile.reducedMotion;
   const subject = route.area === 'materias' ? app.data.subjects.find(({ id }) => id === route.subjectId) : undefined;
+  const noteId = route.area === 'materias' && route.view === 'caderno'
+    ? app.data.notes.find((note) => note.subjectId === subject?.id && note.id === route.noteId)?.id : undefined;
+  const { visitSubject } = app;
+  const subjectId = subject?.id;
+  useEffect(() => {
+    if (app.ready && subjectId) visitSubject(subjectId);
+  }, [app.ready, subjectId, visitSubject]);
   const subjectPage = (id: string, view: SubjectView = 'caderno', noteId?: string) => open({ area: 'materias', subjectId: id, view, noteId });
   const newTask = (dueAt?: string | null) => setSheet({ kind: 'task', subjectId: subject?.id, dueAt });
   const openTask = (id: string) => {
@@ -116,7 +143,7 @@ function AppContent() {
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && (!sheet || sheet.kind === 'search')) {
         event.preventDefault();
-        setSheet(sheet ? null : { kind: 'search' });
+        setSheet(sheet ? null : { kind: 'search', query: '' });
       }
     };
     window.addEventListener('keydown', onKey);
@@ -126,32 +153,31 @@ function AppContent() {
   const createSubject = () => setSheet({ kind: 'subject' });
   const sheetTitles = { settings: 'Configurações', break: 'Uma pausa para respirar', search: 'Buscar no NowWork',
     task: 'Novo registro', subject: sheet?.kind === 'subject' && sheet.subject ? 'Editar matéria' : 'Nova matéria' };
-  const routeKey = route.area === 'materias' ? route.subjectId || route.area : route.area;
+  const routeKey = route.area === 'materias' ? noteId || route.subjectId || route.area : route.area;
   return <div className="nw-shell">
     <a className="workspace-skip" href="#main-content" onClick={(event) => {
       event.preventDefault();
       document.getElementById('main-content')?.focus();
     }}>Ir para o conteúdo</a>
-    <WorkspaceNavigation current={route.area} search={() => setSheet({ kind: 'search' })} settings={() => setSheet({ kind: 'settings' })} />
-    <main className="nw-main" id="main-content" tabIndex={-1}>
+    <WorkspaceNavigation current={route.area} {...navigation} search={(query) => setSheet({ kind: 'search', query })} settings={() => setSheet({ kind: 'settings' })} />
+    <main className={'nw-main' + (noteId ? ' document-workspace' : '')} id="main-content" tabIndex={-1}>
       <motion.div key={routeKey} initial={reduce ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-        transition={reduce ? { duration: 0 } : { duration: .2 }}>
-        {route.area === 'hoje' && <Dashboard subject={subjectPage} subjects={() => open(areas.materias)} newSubject={createSubject}
+        transition={reduce ? { duration: 0 } : springs.panel}>
+        {route.area === 'hoje' && <Dashboard subject={subjectPage} newSubject={createSubject}
           focus={() => open(areas.estudar)} add={newTask} openTask={openTask} />}
         {route.area === 'materias' && (!subject
           ? <Subjects open={subjectPage} create={createSubject} />
-          : <div className="subject-workspace">
-            <SubjectRail current={subject.id} />
-            <Stack className="workspace-page">
+          : noteId ? <Notebook key={subject.id} subjectId={subject.id} noteId={noteId} open={(id) => subjectPage(subject.id, 'caderno', id)} />
+          : <Stack className="workspace-page">
+              <a className="subject-directory-link" href={routeHref(areas.materias)}><ArrowLeft size={16} />Todas as matérias</a>
               <PageHeading title={subject.title} icon={<SubjectMark subject={subject} />}
                 action={<IconButton label="Editar matéria" onClick={() => setSheet({ kind: 'subject', subject })}><Pencil size={18} /></IconButton>} />
               <SectionNavigation label="Nesta matéria" links={subjectViews.map(({ id, label }) => ({ label, active: route.view === id,
                 href: routeHref({ area: 'materias', subjectId: subject.id, view: id }) }))} />
               {route.view === 'tarefas' && <Tasks key={subject.id} subjectId={subject.id} onAdd={() => newTask()} />}
-              {route.view === 'caderno' && <Notebook key={subject.id} subjectId={subject.id} noteId={route.noteId} open={(id) => subjectPage(subject.id, 'caderno', id)} />}
+              {route.view === 'caderno' && <Notebook key={subject.id} subjectId={subject.id} open={(id) => subjectPage(subject.id, 'caderno', id)} />}
               {route.view === 'revisao' && <Review key={subject.id} subjectId={subject.id} />}
-            </Stack>
-          </div>)}
+            </Stack>)}
         {route.area === 'planejar' && <Stack className="workspace-page">
           <PageHeading title="Planejar" />
           <SectionNavigation label="Planejamento" links={planningViews.map(({ id, label }) =>
@@ -176,7 +202,7 @@ function AppContent() {
         {sheet.kind === 'subject' && <SubjectForm subject={sheet.subject} close={dismiss}
           save={(value) => { app.saveSubject(value); subjectPage(value.id); dismiss(); }}
           remove={(id) => { app.removeSubject(id); open(areas.materias); dismiss(); }} />}
-        {sheet.kind === 'search' && <WorkspaceSearch subject={(id) => { subjectPage(id); dismiss(); }}
+        {sheet.kind === 'search' && <WorkspaceSearch initialQuery={sheet.query} subject={(id) => { subjectPage(id); dismiss(); }}
           note={(sid, id) => { subjectPage(sid, 'caderno', id); dismiss(); }} entry={(id) => { openTask(id); dismiss(); }} />}
         {sheet.kind === 'break' && <div className="break-sheet-content">
           <div className="break-illustration"><Coffee size={32} strokeWidth={1.5} /></div>

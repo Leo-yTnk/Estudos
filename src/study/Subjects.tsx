@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, BookOpen, LibraryBig, Plus, Search } from 'lucide-react';
+import { ArrowRight, LibraryBig, Plus, Search } from 'lucide-react';
 import { Button, EmptyState, PageHeading, Stack, Surface } from '../components/ui';
 import { useApp } from '../state/AppState';
-import { areas, routeHref } from '../lib/navigation';
+import { getSubjectIcon, subjectTone } from '../lib/subjectAppearance';
 import type { Subject } from '../types';
 
 function useSubjectCounts(id: string) {
@@ -15,8 +15,15 @@ function useSubjectCounts(id: string) {
 
 const countLabel = (count: number, singular: string, plural: string) => count + ' ' + (count === 1 ? singular : plural);
 
+export function SubjectIcon({ icon }: { icon: ReturnType<typeof getSubjectIcon> }) {
+  const [width, height, , , paths] = icon.icon;
+  return <svg aria-hidden="true" viewBox={`0 0 ${width} ${height}`} width="19" height="19" fill="currentColor">
+    {(typeof paths === 'string' ? [paths] : paths).map((path) => <path key={path} d={path} />)}
+  </svg>;
+}
+
 export function SubjectMark({ subject }: { subject: Subject }) {
-  return <span className={'nw-subject-mark tone-' + subject.color}><BookOpen size={19} strokeWidth={1.8} /></span>;
+  return <span className="nw-subject-mark subject-tone" style={subjectTone(subject.color)}><SubjectIcon icon={getSubjectIcon(subject)} /></span>;
 }
 
 export function SubjectCard({ subject, open }: { subject: Subject; open: () => void }) {
@@ -59,21 +66,4 @@ export function Subjects({ open, create }: { open: (id: string) => void; create:
     )}</div> : <Surface><EmptyState icon={<LibraryBig size={23} />} title={query ? 'Nenhuma matéria encontrada' : 'Nenhuma matéria cadastrada'}
       description={query ? 'Tente buscar por outro nome.' : 'Crie uma matéria para organizar suas atividades.'} /></Surface>}
   </Stack>;
-}
-
-export function SubjectRail({ current }: { current: string }) {
-  const { filtered, query, setQuery } = useSubjectFilter();
-  return <aside className="subject-rail">
-    <a className="subject-directory-link" href={routeHref(areas.materias)}><ArrowLeft size={16} aria-hidden="true" />Todas as matérias</a>
-    <div className="subject-rail-content">
-      <SubjectFilter query={query} change={setQuery} />
-      <nav aria-label="Trocar de matéria" className="subject-switcher">
-        {filtered.map((subject) => <a key={subject.id} href={routeHref({ area: 'materias', subjectId: subject.id, view: 'caderno' })}
-          aria-current={current === subject.id ? 'page' : undefined}>
-          <span className={'subject-dot tone-' + subject.color} aria-hidden="true" />{subject.title}
-        </a>)}
-        {!filtered.length && <span className="nw-muted" role="status">Nenhuma matéria encontrada.</span>}
-      </nav>
-    </div>
-  </aside>;
 }

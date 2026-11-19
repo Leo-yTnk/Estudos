@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { KeyboardOff, ListTree, Plus, Type, X } from 'lucide-react';
+import { KeyboardOff } from 'lucide-react';
 import { IconButton } from '../components/ui';
 import { springs } from '../lib/motion';
 import { useApp } from '../state/AppState';
@@ -33,11 +33,11 @@ export function useMobileEditor() {
   return mobile;
 }
 
-function useKeyboardInset() {
+function useKeyboardInset(enabled: boolean) {
   const [inset, setInset] = useState(0);
   useEffect(() => {
     const viewport = window.visualViewport;
-    if (!viewport) return;
+    if (!enabled || !viewport) return;
     const update = () => {
       const gap = window.innerHeight - viewport.height - viewport.offsetTop;
       setInset(Math.abs(viewport.scale - 1) < .05 && gap > 85 ? Math.round(gap) : 0);
@@ -51,66 +51,54 @@ function useKeyboardInset() {
       viewport.removeEventListener('scroll', update);
       window.removeEventListener('resize', update);
     };
-  }, []);
+  }, [enabled]);
   return inset;
 }
 
-const sections = [
-  { id: 'insert', label: 'Inserir', Icon: Plus },
-  { id: 'text', label: 'Texto', Icon: Type },
-  { id: 'organize', label: 'Organizar', Icon: ListTree },
-] as const;
+export interface RibbonGroup {
+  label: string;
+  short: ReactNode;
+  rows: [ReactNode, ReactNode];
+}
 
-type Section = typeof sections[number]['id'];
-
-export function NotebookToolbar({ actions, selected, advanced, linkForm, dismissKeyboard }: {
-  actions: Record<Section, EditorAction[]>;
-  selected: boolean;
-  advanced: ReactNode;
-  linkForm?: ReactNode;
-  dismissKeyboard: () => void;
+export function NotebookToolbar({ groups, mobile, extra, dismissKeyboard }: {
+  groups: RibbonGroup[]; mobile: boolean; extra?: ReactNode; dismissKeyboard: () => void;
 }) {
-  const [section, setSection] = useState<Section | null>(null);
-  const [formatting, setFormatting] = useState(false);
-  const active = section ?? (selected ? 'text' : 'insert');
-  const inset = useKeyboardInset();
-  const systemReduced = useReducedMotion();
+  const [active, setActive] = useState(1);
+  const inset = useKeyboardInset(mobile);
+  const reduced = useReducedMotion();
   const { data } = useApp();
-  const reduce = !!systemReduced || data.profile.reducedMotion;
-  const close = () => setFormatting(false);
-  useEffect(() => {
-    if (!formatting) return;
-    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') close(); };
-    window.addEventListener('keydown', escape);
-    return () => window.removeEventListener('keydown', escape);
-  }, [formatting]);
+  const animate = !reduced && !data.profile.reducedMotion;
+
+  if (!mobile) return <div className="note-ribbon">
+    <div className="note-ribbon-groups" aria-label="Ferramentas do caderno" role="group">
+      {groups.map(({ label, rows }) => <div key={label} className="note-ribbon-group" role="group" aria-label={label}>
+        {rows.map((row, index) => <div key={index} className="note-ribbon-row">{row}</div>)}
+        <span className="note-ribbon-label" aria-hidden="true">{label}</span>
+      </div>)}
+    </div>
+    {extra}
+  </div>;
 
   return createPortal(<aside className="note-dock" aria-label="Ferramentas do caderno" data-keyboard={inset > 0}
-    style={inset ? { bottom: inset + 8, '--note-available': `${Math.max(120, (window.visualViewport?.height ?? 380) - 140)}px` } as React.CSSProperties : undefined}>
-    <AnimatePresence initial={false}>
-      {formatting && !linkForm && <motion.section key="format" id="note-format-panel" aria-label="Formatação avançada" className="note-dock-panel"
-        initial={reduce ? false : { opacity: 0, y: 9 }} animate={{ opacity: 1, y: 0 }} exit={reduce ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, y: 5 }}
-        transition={reduce ? { duration: 0 } : springs.panel}>
-        <div className="note-panel-title"><strong>Formatação</strong><IconButton label="Fechar formatação" onMouseDown={(event) => event.preventDefault()} onClick={close}><X size={19} /></IconButton></div>
-        {advanced}
-      </motion.section>}
-    </AnimatePresence>
-    {linkForm}
+    style={inset ? { bottom: inset + 8 } : undefined}>
+    {extra}
     <div className="note-dock-bar">
-      <div className={'note-dock-sections' + (inset > 0 ? ' with-keyboard' : '')} role="group" aria-label="Seções da barra">
-        {sections.map(({ id, label, Icon }) => <button key={id} type="button" aria-pressed={active === id && !formatting}
-          onMouseDown={(event) => event.preventDefault()} onClick={() => { setSection(id); close(); }}>
-          <Icon size={15} aria-hidden="true" />{label}
-        </button>)}
-        <button type="button" className="note-aa" aria-label="Formatação avançada" aria-expanded={formatting && !linkForm}
-          aria-controls={formatting && !linkForm ? 'note-format-panel' : undefined}
-          disabled={!!linkForm} onMouseDown={(event) => event.preventDefault()} onClick={() => setFormatting((open) => !open)}>Aa</button>
+      <div className="note-dock-sections" role="group" aria-label="Seções da barra">
+        {groups.map(({ label, short }, index) => <button key={label} type="button" aria-label={label}
+          title={label} aria-pressed={active === index} onMouseDown={(event) => event.preventDefault()}
+          onClick={() => setActive(index)}>{active === index && <motion.span layoutId={animate ? 'ribbon-active' : undefined}
+            transition={animate ? springs.panel : { duration: 0 }} className="note-mobile-active" aria-hidden="true" />}{short}</button>)}
         {inset > 0 && <IconButton label="Recolher teclado" onMouseDown={(event) => event.preventDefault()}
-          onClick={dismissKeyboard}><KeyboardOff size={19} /></IconButton>}
+          onClick={dismissKeyboard}><KeyboardOff size={17} /></IconButton>}
       </div>
-      <div className="note-dock-actions" role="group" aria-label={sections.find((item) => item.id === active)?.label}>
-        {actions[active].map((action) => <EditorActionButton key={action.label} action={action}/>)}
-      </div>
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.div key={active} role="group" aria-label={groups[active].label} className="note-mobile-group"
+          initial={animate ? { opacity: 0, x: 5 } : false} animate={{ opacity: 1, x: 0 }}
+          exit={animate ? { opacity: 0, transition: { duration: .1 } } : undefined} transition={animate ? springs.panel : { duration: 0 }}>
+          {groups[active].rows.map((row, index) => <div key={index} className="note-ribbon-row">{row}</div>)}
+        </motion.div>
+      </AnimatePresence>
     </div>
   </aside>, document.body);
 }

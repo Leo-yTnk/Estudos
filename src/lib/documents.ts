@@ -1,8 +1,9 @@
-import { getSchema, type JSONContent } from '@tiptap/core';
+import { Extension, getSchema, type JSONContent } from '@tiptap/core';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { TableKit } from '@tiptap/extension-table';
 import Highlight from '@tiptap/extension-highlight';
 import TextAlign from '@tiptap/extension-text-align';
+import { TextStyleKit } from '@tiptap/extension-text-style';
 import StarterKit from '@tiptap/starter-kit';
 import type { NoteBlock, StudyNote } from '../types';
 
@@ -13,14 +14,37 @@ export function safeLink(value: string) {
   } catch { return null; }
 }
 
+const paragraphIndent = Extension.create({
+  name: 'paragraphIndent',
+  addGlobalAttributes() {
+    const safeIndent = (value: unknown) => {
+      const level = Number(value);
+      return Number.isInteger(level) && level >= 1 && level <= 6 ? level : 0;
+    };
+    return [{
+      types: ['paragraph', 'heading'],
+      attributes: {
+        indent: {
+          default: 0,
+          parseHTML: (element) => safeIndent(element.dataset.indent),
+          renderHTML: ({ indent }) => safeIndent(indent)
+            ? { 'data-indent': safeIndent(indent), style: 'padding-inline-start: ' + (safeIndent(indent) * 1.25) + 'em' } : {},
+        },
+      },
+    }];
+  },
+});
+
 export const documentExtensions = [
   StarterKit.configure({
     heading: { levels: [2, 3] },
     link: { openOnClick: false, defaultProtocol: 'https', isAllowedUri: (url) => !!safeLink(url) },
   }),
   TableKit.configure({ table: { renderWrapper: true } }),
-  Highlight,
-  TextAlign.configure({ types: ['paragraph', 'heading'], alignments: ['left', 'center', 'right'] }),
+  Highlight.configure({ multicolor: true }),
+  TextStyleKit.configure({ backgroundColor: false, lineHeight: false }),
+  paragraphIndent,
+  TextAlign.configure({ types: ['paragraph', 'heading'], alignments: ['left', 'center', 'right', 'justify'] }),
   TaskList,
   TaskItem.configure({ nested: true }),
 ];

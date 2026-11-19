@@ -1,3 +1,4 @@
+import { subjectTone } from '../lib/subjectAppearance';
 import { useEffect, useState, type FormEvent } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Archive, CalendarDays, Check, ChevronDown, Clock3, Play, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
@@ -42,7 +43,7 @@ export function EntryCard({ entry, initiallyExpanded = false }: { entry: Entry; 
   return <motion.article layout={!reduce} transition={springs.layout} className={'entry-card ' + (expanded ? 'is-expanded ' : '') + (entry.status !== 'active' ? 'is-dimmed' : '')}>
     <button className="entry-summary" type="button" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
       <div className="entry-main"><div className="entry-tags"><KindPill tone={tone}>{KINDS[entry.kind]}</KindPill>
-        {subject && <span className={'nw-tag tone-' + subject.color}>{subject.title}</span>}
+        {subject && <span className="nw-tag subject-tone" style={subjectTone(subject.color)}>{subject.title}</span>}
         {entry.importance === 3 && <KindPill tone="amber">Alta prioridade</KindPill>}
         {entry.source === 'demo' && <span className="demo-pill">Exemplo</span>}
         {entry.status === 'done' && <span className="status-label"><Check size={12}/> Concluída</span>}

@@ -135,3 +135,63 @@
 @media (max-width: 580px) {
   .subject-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
 }
+
+.today-summary {
+  display: grid;
+  grid-template-columns: 1.15fr 1.2fr minmax(0, .8fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+.today-summary > * { min-width: 0; }
+.today-next, .today-checklist { grid-row: span 2; }
+.today-next .nw-focus-content { width: 100%; }
+.today-next h2 { overflow-wrap: anywhere; }
+.today-checklist, .today-activity, .today-advice, .today-subject { padding: var(--space-5); }
+.today-checklist ul { margin: var(--space-2) 0 0; padding: 0; list-style: none; }
+.today-checklist li { display: flex; align-items: center; gap: var(--space-2); }
+.today-checklist li + li { border-top: 1px solid var(--line); }
+.today-checklist input { width: 19px; height: 19px; flex: none; accent-color: var(--accent); cursor: pointer; }
+.today-checklist button { display: grid; flex: 1; gap: 2px; min-width: 0; padding: 8px 3px; text-align: left; color: var(--ink); font: inherit; font-size: 13px; font-weight: 650; border: 0; background: none; overflow-wrap: anywhere; }
+.today-checklist button:hover { color: var(--accent); }
+.today-checklist button small { color: var(--secondary); font-weight: 500; }
+.today-stat { padding: var(--space-4); }
+.today-stat strong { font-size: clamp(23px, 4vw, 36px); }
+.today-insights { display: grid; grid-template-columns: 1.15fr 1fr; gap: var(--space-4); }
+.today-chart { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: clamp(4px, 1vw, 13px); margin: 15px 0; }
+.today-chart > div { display: grid; gap: var(--space-1); justify-items: center; font-size: 11px; color: var(--secondary); }
+.today-chart strong { color: var(--ink); }
+.today-bar { display: flex; align-items: flex-end; width: 100%; max-width: 48px; height: 48px; border-radius: 5px; background: var(--surface-soft); }
+.today-bar i { width: 100%; border-radius: inherit; background: var(--accent); transition: height var(--time-quick); }
+.today-focus { display: flex; gap: var(--space-2); align-items: center; }
+.today-advice { overflow-wrap: anywhere; }
+.today-advice > span { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 9px; color: var(--accent); background: var(--accent-soft); }
+.today-advice.today-alert > span { color: var(--amber); background: var(--amber-soft); }
+.today-advice h3 { margin: var(--space-3) 0 var(--space-1); }
+.today-advice p { margin: 0 0 var(--space-3); font-size: var(--text-control); color: var(--secondary); }
+.today-subject { min-width: 0; }
+.today-subject-heading, .subject-preview { display: flex; align-items: center; gap: var(--space-3); overflow-wrap: anywhere; }
+.today-subject-actions { display: flex; flex-wrap: wrap; margin: var(--space-2) -5px 0; gap: 2px; }
+.today-subject-actions .btn { padding-inline: 7px; }
+.subject-tone {
+  --tone: color-mix(in srgb, var(--subject-color) 18%, var(--surface));
+  --tone-ink: color-mix(in srgb, var(--subject-color) 50%, var(--ink-strong));
+}
+.subject-color-grid, .subject-icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: var(--space-2); }
+.subject-icon-grid { max-height: 178px; overflow: auto; margin-top: var(--space-2); padding: 4px; }
+.subject-swatch, .subject-icon-grid button { display: grid; place-items: center; min-height: 38px; border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.subject-swatch svg { color: #111; background: #fff; border-radius: 50%; }
+.subject-icon-grid button { color: var(--tone-ink); background: var(--surface); }
+.subject-icon-grid button:hover, .subject-icon-grid button[aria-pressed='true'] { background: var(--tone); }
+.subject-icon-grid button[aria-pressed='true'], .subject-swatch[aria-pressed='true'] { outline: 2px solid var(--accent); outline-offset: 1px; }
+@media (max-width: 760px) {
+  .today-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto; gap: var(--space-3); }
+  .today-next, .today-checklist { grid-row: auto; }
+  .today-insights { grid-template-columns: 1fr; }
+  .today-shortcuts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 530px) {
+  .today-next, .today-checklist { grid-column: 1 / -1; }
+  .today-next { min-height: 190px; }
+  .today-stat { display: flex; }
+  .today-shortcuts { grid-template-columns: 1fr; }
+}

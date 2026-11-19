@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
-import { CalendarDays, House, LibraryBig, Search, Settings2, Sparkles, Timer } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CalendarDays, House, LibraryBig, Search, Settings2, Timer } from 'lucide-react';
 import { areas, routeHref, type Area } from '../lib/navigation';
 import { springs } from '../lib/motion';
 import { useApp } from '../state/AppState';
@@ -12,13 +13,20 @@ const destinations = [
   { area: 'estudar', title: 'Estudar', Icon: Timer },
 ] as const;
 
-export function WorkspaceNavigation({ current, search, settings }: { current: Area; search: () => void; settings: () => void }) {
+export function WorkspaceNavigation({ current, search, settings, canBack, canForward, back, forward }: {
+  current: Area; search: (query: string) => void; settings: () => void;
+  canBack: boolean; canForward: boolean; back: () => void; forward: () => void;
+}) {
+  const [query, setQuery] = useState('');
   const reduced = useReducedMotion();
   const { data } = useApp();
   const animate = !reduced && !data.profile.reducedMotion;
   return <header className="workspace-header">
     <div className="workspace-header-inner">
-      <a className="nw-logo" href={routeHref(areas.hoje)}><span className="nw-logo-icon"><Sparkles size={17} /></span>NowWork</a>
+      <Toolbar label="Histórico de navegação" className="workspace-history">
+        <IconButton label="Voltar" disabled={!canBack} onClick={back}><ArrowLeft size={19} /></IconButton>
+        <IconButton label="Avançar" disabled={!canForward} onClick={forward}><ArrowRight size={19} /></IconButton>
+      </Toolbar>
       <nav className="workspace-primary" aria-label="Navegação principal">
         {destinations.map(({ area, title, Icon }) => <a key={area} href={routeHref(areas[area])} aria-current={current === area ? 'page' : undefined}>
           {current === area && <motion.span className="workspace-current" aria-hidden="true" layoutId={animate ? 'workspace-current' : undefined}
@@ -27,7 +35,14 @@ export function WorkspaceNavigation({ current, search, settings }: { current: Ar
         </a>)}
       </nav>
       <Toolbar className="workspace-actions">
-        <IconButton label="Buscar" onClick={search} aria-keyshortcuts="Control+K Meta+K"><Search size={19} /></IconButton>
+        <form className="workspace-search" role="search" onSubmit={(event) => {
+          event.preventDefault();
+          search(query);
+          setQuery('');
+        }}>
+          <IconButton label="Buscar" type="submit" aria-keyshortcuts="Control+K Meta+K"><Search size={17} /></IconButton>
+          <input aria-label="Pesquisar no NowWork" placeholder="Pesquisar" type="search" value={query} onChange={(event) => setQuery(event.target.value)} />
+        </form>
         <IconButton label="Configurações" onClick={settings}><Settings2 size={19} /></IconButton>
       </Toolbar>
     </div>

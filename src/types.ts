@@ -13,9 +13,14 @@ export interface Step {
   awarded: boolean;
 }
 
-export const SUBJECT_COLORS = ['mint', 'violet', 'blue', 'peach', 'rose'] as const;
+export const SUBJECT_COLORS = [
+  'cherry', 'rose', 'coral', 'peach', 'orange', 'amber', 'gold', 'lemon',
+  'lime', 'olive', 'leaf', 'emerald', 'mint', 'teal', 'cyan', 'sky',
+  'blue', 'cobalt', 'indigo', 'violet', 'orchid', 'purple', 'magenta', 'berry',
+] as const;
 export type SubjectColor = typeof SUBJECT_COLORS[number];
-export interface Subject { id: string; title: string; color: SubjectColor }
+export interface Subject { id: string; title: string; color: SubjectColor; icon?: string }
+export interface SubjectVisit { subjectId: string; at: string }
 export const BLOCK_TYPES = ['text', 'heading', 'check', 'link'] as const;
 export interface NoteBlock { id: string; type: typeof BLOCK_TYPES[number]; text: string; checked?: boolean; url?: string }
 export interface StudyNote { id: string; subjectId: string; title: string; blocks: NoteBlock[]; content?: JSONContent; updatedAt: string }
@@ -70,6 +75,7 @@ export interface AppData {
     reducedMotion: boolean;
   };
   subjects: Subject[];
+  subjectVisits: SubjectVisit[];
   notes: StudyNote[];
   flashcards: Flashcard[];
   entries: Entry[];
@@ -84,11 +90,12 @@ export function emptyData(): AppData {
     version: 1,
     profile: { name: '', energy: 2, theme: 'system', reducedMotion: false },
     subjects: [
-      { id: 'math', title: 'Matemática', color: 'mint' },
-      { id: 'portuguese', title: 'Português', color: 'violet' },
-      { id: 'science', title: 'Ciências', color: 'blue' },
-      { id: 'history', title: 'História', color: 'peach' },
+      { id: 'math', icon: 'calculator', title: 'Matemática', color: 'mint' },
+      { id: 'portuguese', icon: 'pen-nib', title: 'Português', color: 'violet' },
+      { id: 'science', icon: 'flask', title: 'Ciências', color: 'blue' },
+      { id: 'history', icon: 'landmark', title: 'História', color: 'peach' },
     ],
+    subjectVisits: [],
     notes: [],
     flashcards: [],
     entries: [],

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { emptyData, uid } from '../types';
 import type { AppData, Entry, EntryInput, Reward, Step, Subject, StudyNote, Flashcard } from '../types';
 import { pointsBalance, pointsFor } from '../lib/engine';
@@ -12,6 +12,7 @@ interface AppContextValue {
   toast: ToastState | null;
   dismissToast: () => void;
   notify: (message: string) => void;
+  visitSubject: (id: string) => void;
   saveSubject: (subject: Subject) => void;
   removeSubject: (id: string) => void;
   saveNote: (note: StudyNote) => void;
@@ -96,11 +97,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const upsert = <T extends { id: string },>(items: T[], item: T) => items.some(({ id }) => id === item.id)
     ? items.map((current) => current.id === item.id ? item : current) : [item, ...items];
+  const visitSubject = useCallback((id: string) => {
+    const at = stamped();
+    setData((data) => {
+      const last = data.subjectVisits.filter((visit) => visit.subjectId === id).at(-1);
+      if (last && Date.parse(at) - Date.parse(last.at) < 60_000) return data;
+      return { ...data, subjectVisits: [...data.subjectVisits.slice(-1999), { subjectId: id, at }] };
+    });
+  }, []);
   const saveSubject = (subject: Subject) => setData((d) => ({ ...d, subjects: upsert(d.subjects, subject) }));
   const removeSubject = (id: string) => setData((d) => ({
     ...d, subjects: d.subjects.filter((item) => item.id !== id),
     entries: d.entries.map((entry) => entry.subjectId === id ? { ...entry, subjectId: undefined } : entry),
     notes: d.notes.filter((note) => note.subjectId !== id),
+    subjectVisits: d.subjectVisits.filter((visit) => visit.subjectId !== id),
     flashcards: d.flashcards.filter((card) => card.subjectId !== id),
   }));
   const saveNote = (note: StudyNote) => setData((d) => ({ ...d, notes: upsert(d.notes, { ...note, updatedAt: stamped() }) }));
@@ -284,7 +294,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const restore = (next: AppData) => { setData(next); notify('Backup importado com sucesso.'); };
   const clearAll = () => { setData(emptyData()); deletedRef.current = null; notify('Dados locais reiniciados.'); };
 
-  return <Context.Provider value={{ data, ready, toast, dismissToast, notify, saveSubject, removeSubject, saveNote, updateNote, removeNote, saveFlashcard, removeFlashcard, updateProfile, addEntry, editEntry,
+  return <Context.Provider value={{ data, ready, toast, dismissToast, notify, visitSubject, saveSubject, removeSubject, saveNote, updateNote, removeNote, saveFlashcard, removeFlashcard, updateProfile, addEntry, editEntry,
     completeEntry, reopenEntry, postponeEntry, archiveEntry, restoreEntry, deleteEntry, undoDelete, divideEntry, addStep, toggleStep,
     startFocus, finishFocus, startBreak, finishBreak, addReward, deleteReward, redeemReward, addDemo,
     removeDemo, restore, clearAll }}>

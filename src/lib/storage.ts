@@ -29,8 +29,12 @@ export function validateData(value: unknown): AppData {
   if (obj.entries.length > 3000 || obj.activity.length > 20000 || obj.rewards.length > 1000) throw new Error('Backup acima do limite de segurança.');
   const subjects = Array.isArray(obj.subjects) ? obj.subjects.slice(0, 200).filter(
     (item) => item && typeof item.id === 'string' && typeof item.title === 'string' && SUBJECT_COLORS.includes(item.color),
-  ).map((item) => ({ id: item.id, title: item.title.slice(0, 60), color: item.color })) : emptyData().subjects;
+  ).map((item) => ({ id: item.id, title: item.title.slice(0, 60), color: item.color,
+    ...(typeof item.icon === 'string' && /^[a-z0-9-]{1,60}$/.test(item.icon) ? { icon: item.icon } : {}) })) : emptyData().subjects;
   const hasSubject = (id: string) => subjects.some((item) => item.id === id);
+  const subjectVisits = Array.isArray(obj.subjectVisits) ? obj.subjectVisits.slice(-2000).filter((visit) =>
+    visit && typeof visit.subjectId === 'string' && hasSubject(visit.subjectId) &&
+    typeof visit.at === 'string' && Number.isFinite(Date.parse(visit.at))) : [];
   const notes = Array.isArray(obj.notes) ? obj.notes.slice(0, 2000).filter(
     (note) => note && hasSubject(note.subjectId) && typeof note.title === 'string' && Array.isArray(note.blocks),
   ).map((note) => ({
@@ -98,7 +102,7 @@ export function validateData(value: unknown): AppData {
       theme: ['light','dark','system'].includes(profile.theme) ? profile.theme : 'system',
       reducedMotion: !!profile.reducedMotion,
     },
-    subjects, notes, flashcards, entries, rewards, activity,
+    subjects, subjectVisits, notes, flashcards, entries, rewards, activity,
     focus: obj.focus && typeof obj.focus.entryId === 'string' && typeof obj.focus.startedAt === 'string' ? obj.focus : null,
     break: obj.break && typeof obj.break.startedAt === 'string' && Number.isFinite(obj.break.minutes)
       ? { startedAt: obj.break.startedAt, minutes: Math.max(1, Math.min(60, obj.break.minutes)) } : null,

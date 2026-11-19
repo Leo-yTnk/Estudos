@@ -18,7 +18,8 @@ a { color: inherit; }
 .brand span { color: var(--accent); }
 .screen { display: flex; flex-direction: column; gap: 22px; }
 h1,h2,h3,p { margin-top: 0; }
-h1,h2,h3 { color: var(--ink-strong); letter-spacing: -.037em; }
+h1,h2,h3,h4,h5,h6 { font-family: var(--font-heading); color: var(--ink-strong); letter-spacing: -.025em; font-weight: 800; }
+h2,h3 { font-weight: 700; }
 p { line-height: 1.55; }
 .section-note { color: var(--tertiary); font-size: 12px; }
 .micro-label { color: var(--secondary); font-size: 12px; font-weight: 650; }
@@ -39,7 +40,7 @@ p { line-height: 1.55; }
 .priority-card { padding: 28px 29px 21px; overflow: hidden; }
 .priority-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .priority-points { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--accent); font-weight: 680; }
-.priority-card h2 { font-size: clamp(23px, 3.5vw, 31px); line-height: 1.22; font-weight: 710; margin: 21px 0 12px; max-width: 590px; }
+.priority-card h2 { font-size: clamp(23px, 3.5vw, 31px); line-height: 1.22; margin: 21px 0 12px; max-width: 590px; }
 .priority-meta { color: var(--secondary); display: flex; align-items: center; gap: 15px; flex-wrap: wrap; font-size: 12px; }
 .priority-meta > span { display: inline-flex; align-items: center; gap: 5px; }
 .recommendation { margin: 23px 0; padding: 12px 14px; border-radius: 13px; background: var(--accent-soft); color: var(--accent); display: flex; align-items: start; gap: 11px; font-size: 12px; line-height: 1.55; }
@@ -100,7 +101,7 @@ p { line-height: 1.55; }
 .entry-summary:hover { background: var(--surface-soft); }
 .entry-main { min-width: 0; }
 .entry-tags { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.entry-main h3 { font-size: 15px; letter-spacing: -.02em; font-weight: 670; margin: 11px 0 8px; overflow-wrap: anywhere; }
+.entry-main h3 { font-size: 15px; letter-spacing: -.02em; margin: 11px 0 8px; overflow-wrap: anywhere; }
 .entry-meta { display: flex; gap: 13px; align-items: center; flex-wrap: wrap; color: var(--tertiary); font-size: 11px; }
 .entry-meta > span { display: inline-flex; align-items: center; gap: 5px; }
 .entry-chevron { color: var(--tertiary); flex: 0 0 auto; }

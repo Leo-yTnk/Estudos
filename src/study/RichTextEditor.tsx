@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
 import { AlignCenter, AlignJustify, AlignLeft, AlignRight, ArrowDown, ArrowUp, Bold, Clipboard, ClipboardList, Code2, Copy, Eraser, Highlighter, IndentDecrease, IndentIncrease,
-  ImagePlus, Italic, LayoutGrid, Link2, List, ListChecks, ListOrdered, Minus, Plus, Quote, Redo2, Scissors, SlidersHorizontal, Strikethrough, Subscript, Superscript, Table2, Trash2, Underline, Undo2 } from 'lucide-react';
+  ImagePlus, Italic, LayoutGrid, Link2, List, ListChecks, ListOrdered, Minus, Plus, Quote, Redo2, Scissors, SlidersHorizontal, Strikethrough, Subscript, Superscript, Table2, Trash2, Underline, Undo2, Type, PanelsTopLeft } from 'lucide-react';
 import type { JSONContent } from '@tiptap/core';
 import { NodeSelection } from '@tiptap/pm/state';
 import { closeHistory } from '@tiptap/pm/history';
@@ -14,7 +14,7 @@ import { documentExtensions, safeLink } from '../lib/documents';
 import { copyNoteSelection, pasteNoteSelection } from '../lib/noteClipboard';
 import { useApp } from '../state/AppState';
 import { canMoveBlock, moveBlock } from '../lib/editorBlocks';
-import { EditorActionButton, NotebookToolbar, useMobileEditor, type EditorAction, type RibbonGroup, type RibbonTab } from './NotebookToolbar';
+import { EditorActionButton, NotebookToolbar, useMobileEditor, type EditorAction, type ToolGroup, type ToolCategory } from './NotebookToolbar';
 
 const fonts = [
   { label: 'Padrão', value: '' }, { label: 'Arial', value: 'Arial, sans-serif' },
@@ -29,6 +29,7 @@ const extensions = documentExtensions.map((extension) =>
   extension.name === 'collection' ? blockViews.collection : extension.name === 'noteImage' ? blockViews.noteImage : extension);
 
 export function RichTextEditor({ content, onChange }: { content: JSONContent; onChange: (content: JSONContent) => void }) {
+  const [toolPanel, setToolPanel] = useState<string | null>(null);
   const [link, setLink] = useState<string | null>(null);
   const [invalidLink, setInvalidLink] = useState(false);
   const [popover, setPopover] = useState<'paste' | 'ink' | 'highlight' | 'insert' | 'collections' | null>(null);
@@ -75,7 +76,8 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
 
   if (!editor || !tools) return null;
   const focus = () => editor.chain().focus(undefined, { scrollIntoView: false });
-  const closeLink = () => { setLink(null); setInvalidLink(false); focus().run(); };
+  const closeTools = () => { setToolPanel(null); setPopover(null); };
+  const closeLink = () => { closeTools(); setLink(null); setInvalidLink(false); focus().run(); };
   const applyLink = (event: React.FormEvent) => {
     event.preventDefault();
     const href = safeLink(link?.trim() || '');
@@ -104,8 +106,8 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
     { label: 'Lista numerada', icon: <ListOrdered size={18} />, pressed: tools.ordered, run: () => focus().toggleOrderedList().run() },
     { label: 'Checklist', icon: <ListChecks size={18} />, pressed: tools.task, run: () => focus().toggleTaskList().run() },
   ];
-  const quote: EditorAction = { label: 'Citação', icon: <Quote size={18} />, pressed: tools.quote, run: () => { setPopover(null); focus().toggleBlockquote().run(); } };
-  const code: EditorAction = { label: 'Bloco de código', icon: <Code2 size={18} />, pressed: tools.code, run: () => { setPopover(null); focus().toggleCodeBlock().run(); } };
+  const quote: EditorAction = { label: 'Citação', icon: <Quote size={18} />, pressed: tools.quote, run: () => { closeTools(); focus().toggleBlockquote().run(); } };
+  const code: EditorAction = { label: 'Bloco de código', icon: <Code2 size={18} />, pressed: tools.code, run: () => { closeTools(); focus().toggleCodeBlock().run(); } };
   const linkAction: EditorAction = { label: 'Inserir ou editar link', icon: <Link2 size={18} />, pressed: tools.link,
     run: () => { setPopover(null); setInvalidLink(false); setLink(editor.getAttributes('link').href || ''); } };
   const history: EditorAction[] = [
@@ -153,10 +155,10 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
     { label: 'Excluir tabela', icon: <Trash2 size={18} />, run: () => focus().deleteTable().run() },
   ];
   const insertTable: EditorAction = { label: 'Inserir tabela', icon: <Table2 size={19} />, disabled: tools.table,
-    run: () => { setPopover(null); focus().insertTable({ rows: 3, cols: 2, withHeaderRow: true }).run(); } };
+    run: () => { closeTools(); focus().insertTable({ rows: 3, cols: 2, withHeaderRow: true }).run(); } };
   const group = (actions: EditorAction[]) => actions.map((action) => <EditorActionButton key={action.label} action={action} />);
   const linkForm = link === null ? undefined : <form className="document-link-form" onSubmit={applyLink}
-    onKeyDown={(event) => { if (event.key === 'Escape') closeLink(); }}>
+    onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); closeLink(); } }}>
     <label className="field-label">Endereço do link
       <input autoFocus type="url" required maxLength={2048} className="ds-input" placeholder="https://…" value={link}
         aria-invalid={invalidLink} onChange={(event) => { setLink(event.target.value); setInvalidLink(false); }} />
@@ -185,7 +187,7 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
   const clipboard: EditorAction[] = [
     { label: 'Colar', icon: <Clipboard size={17} />, run: () => paste(false) },
     { label: 'Copiar', icon: <Copy size={17} />, disabled: !tools.selected, run: () => copy(false) },
-    { label: 'Colar (extensão)', icon: <ClipboardList size={17} />, pressed: popover === 'paste', run: () => toggle('paste') },
+    { label: 'Opções de colagem', icon: <ClipboardList size={17} />, pressed: popover === 'paste', run: () => toggle('paste') },
     { label: 'Recortar', icon: <Scissors size={17} />, disabled: !tools.selected, run: () => copy(true) },
   ];
   const styleSelect = <select aria-label="Estilo" title="Estilo" value={tools.h2 ? 'h2' : tools.h3 ? 'h3' : 'body'} onChange={(event) => {
@@ -212,16 +214,14 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
     { label: 'Cor de fundo', icon: <Highlighter size={18} />, pressed: tools.highlight || popover === 'highlight', run: () => toggle('highlight') },
   ];
   const clear: EditorAction = { label: 'Limpar formatação', icon: <Eraser size={18} />, run: () => focus().unsetAllMarks().clearNodes().run() };
-  const separator: EditorAction = { label: 'Inserir separador', icon: <Minus size={18} />, run: () => { setPopover(null); focus().setHorizontalRule().run(); } };
+  const separator: EditorAction = { label: 'Inserir separador', icon: <Minus size={18} />, run: () => { closeTools(); focus().setHorizontalRule().run(); } };
   const insertContent = (item: JSONContent) => {
-    setPopover(null);
+    closeTools();
     focus().command(({ tr }) => { closeHistory(tr); return true; }).insertContent(item).run();
   };
   const insertSet = (kind: CollectionKind) => insertContent({ type: 'collection', attrs: { value: createCollection(kind) } });
   const insertImage: EditorAction = { label: 'Inserir imagem', icon: <ImagePlus size={19} />,
-    run: () => { setPopover(null); fileInput.current?.click(); } };
-  const insertAction: EditorAction = { label: 'Inserir', icon: <Plus size={21} />, pressed: popover === 'insert' || popover === 'collections',
-    run: () => toggle('insert') };
+    run: () => { closeTools(); fileInput.current?.click(); } };
   const setAction: EditorAction = { label: 'Inserir conjunto', icon: <LayoutGrid size={18} />, pressed: popover === 'collections',
     run: () => toggle('collections') };
   const contextualBlock = tools.selectedBlock === 'collection' || tools.selectedBlock === 'noteImage';
@@ -241,16 +241,15 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
       editor.view.dispatch(closeHistory(editor.state.tr.setDocAttribute('noteWidth', value === 'standard' ? null : value)));
     }} />;
   const insertCommands = [insertImage, insertTable, linkAction, setAction, quote, code, separator];
-  const context: RibbonGroup[] = tools.table ? [{ label: 'Tabela', rows: [group(table.slice(0, 3)), group(table.slice(3))] }]
+  const context: ToolGroup[] = tools.table ? [{ label: 'Linhas e colunas', rows: [group(table)] }]
     : contextualBlock ? [{ label: 'Elemento selecionado', rows: [group([propertyAction, ...blocks.slice(2)])] }] : [];
-  const tabs: RibbonTab[] = [
-    { id: 'home', label: 'Início', groups: [
-      { label: 'Histórico e transferência', rows: [group(history), group(clipboard)] },
-      { label: 'Fonte', rows: [fontSelects, group([...marks, ...colorActions, clear])] },
-      { label: 'Parágrafo', rows: [<>{group(align)}{lineHeight}</>, group([...lists, ...blocks.slice(0, 2)])] },
-      { label: 'Estilo', rows: [styleSelect] },
+  const categories: ToolCategory[] = [
+    { id: 'format', label: 'Texto', icon: <Type size={19} />, groups: [
+      { label: 'Estilo e fonte', rows: [<>{styleSelect}{fontSelects}</>, group([...marks, ...colorActions, clear])] },
+      { label: 'Listas e parágrafo', rows: [group(lists), <>{group(align)}{group(blocks.slice(0, 2))}{lineHeight}</>] },
+      { label: 'Área de transferência', rows: [group(clipboard)] },
     ] },
-    { id: 'insert', label: 'Inserir', groups: [
+    { id: 'insert', label: 'Inserir', icon: <Plus size={20} />, groups: [
       { label: 'Elementos', rows: [group(insertCommands.filter((action) => action !== setAction))] },
       { label: 'Conjuntos', rows: [Object.entries(collectionTypes).map(([key, definition]) => {
         const kind = key as CollectionKind;
@@ -259,13 +258,13 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
           onClick={() => insertSet(kind)}>{definition.label}</Button>;
       })] },
     ] },
-    { id: 'layout', label: 'Layout', groups: [
+    { id: 'layout', label: 'Layout', icon: <PanelsTopLeft size={18} />, groups: [
       { label: 'Documento', rows: [pageWidth] },
-      { label: 'Parágrafo', rows: [group([...align, ...blocks.slice(0, 2)]), lineHeight] },
-      { label: 'Blocos', rows: [group(blocks.slice(2))] },
-      ...context,
+      { label: 'Parágrafo', rows: [<>{group([...align, ...blocks.slice(0, 2)])}{lineHeight}</>] },
+      { label: 'Ordem dos blocos', rows: [group(blocks.slice(2))] },
     ] },
-    ...(context.length ? [{ id: 'context', label: tools.table ? 'Tabela' : tools.selectedBlock === 'collection' ? 'Conjunto' : 'Imagem', groups: context }] : []),
+    ...(context.length ? [{ id: 'context', label: tools.table ? 'Tabela' : tools.selectedBlock === 'collection' ? 'Conjunto' : 'Imagem',
+      icon: tools.table ? <Table2 size={18} /> : <SlidersHorizontal size={18} />, groups: context }] : []),
   ];
   const title = popover === 'paste' ? 'Opções de colagem' : popover === 'ink' ? 'Cor do texto' : popover === 'highlight'
     ? 'Cor de fundo' : popover === 'collections' ? 'Inserir conjunto' : 'Inserir';
@@ -275,8 +274,7 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
     if (popover === 'ink') (color ? chain.setColor(color) : chain.unsetColor()).run();
     else (color ? chain.setHighlight({ color }) : chain.unsetHighlight()).run();
   };
-  const extra = linkForm || (popover && <section className="note-ribbon-panel" aria-label={title}
-    onKeyDown={(event) => { if (event.key === 'Escape') { setPopover(null); focus().run(); } }}>
+  const extra = linkForm || (popover && <section className="note-ribbon-panel" aria-label={title}>
     <div className="nw-section-heading"><strong>{title}</strong>
       <IconButton label="Fechar opções" onClick={() => { setPopover(null); focus().run(); }}>×</IconButton></div>
     {popover === 'insert' ? <Toolbar>{insertCommands.map((action) =>
@@ -317,7 +315,7 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
       } catch (error) { notify(error instanceof Error ? error.message : 'Não foi possível inserir a imagem.'); }
     }} />
     <NotebookToolbar simple={{ history: group(history), text: <>{styleSelect}{group(marks.slice(0, 3))}</>,
-      lists: group(lists), insert: group([insertAction]) }} tabs={tabs} extra={extra} mobile={mobile}
+      lists: group(lists), insert: <Plus size={21} /> }} categories={categories} panel={toolPanel} setPanel={setToolPanel} extra={extra} mobile={mobile}
       clearExtra={() => { setPopover(null); setLink(null); }} showInsert={() => toggle('insert')}
       dismissKeyboard={() => { if (link !== null && document.activeElement instanceof HTMLElement) document.activeElement.blur(); else editor.commands.blur(); }} />
     <EditorContent editor={editor} className="document-content" data-width={tools.pageWidth} />

@@ -1,6 +1,10 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import '@fontsource-variable/inter';
+import '@fontsource-variable/inter/wght-italic.css';
+import '@fontsource-variable/inter-tight';
+import '@fontsource-variable/inter-tight/wght-italic.css';
 import './styles/tokens.css';
 import './styles/app.css';
 import './styles/system.css';

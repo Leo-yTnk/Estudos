@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type CSSProperties } from 'react';
 
 export function NumberSlider({ label, value, min, max, stops, vertical, describe, onChange }: {
   label: string; value: number; min: number; max: number; stops?: readonly number[]; vertical?: boolean;
@@ -19,6 +19,9 @@ export function NumberSlider({ label, value, min, max, stops, vertical, describe
     } else setInvalid(true);
   };
   const index = stops ? stops.reduce((best, stop, i) => Math.abs(stop - value) < Math.abs(stops[best] - value) ? i : best, 0) : value;
+  const start = stops ? 0 : min;
+  const end = stops ? stops.length - 1 : max;
+  const progress = end > start ? Math.max(0, Math.min(1, (index - start) / (end - start))) * 100 : 0;
   return <div className="ds-number-slider" data-orientation={vertical ? 'vertical' : 'horizontal'}>
     <label className="field-label">{label}
       <input ref={number} type="number" className="ds-input ds-number-slider-value" min={min} max={max} step={1} required
@@ -35,8 +38,9 @@ export function NumberSlider({ label, value, min, max, stops, vertical, describe
           if (event.key === 'Enter') { event.preventDefault(); commit(); }
         }} />
     </label>
-    <input type="range" aria-label={label + ' — slider'} aria-orientation={vertical ? 'vertical' : 'horizontal'}
-      aria-valuetext={describe?.(value) ?? String(value)} min={stops ? 0 : min} max={stops ? stops.length - 1 : max} step={1} value={index}
+    <input className="ds-slider" type="range" aria-label={label + ' — slider'} aria-orientation={vertical ? 'vertical' : 'horizontal'}
+      aria-valuetext={describe?.(value) ?? String(value)} min={start} max={end} step={1} value={index}
+      style={{ '--ds-slider-progress': progress + '%' } as CSSProperties}
       onChange={(event) => {
         const position = event.target.valueAsNumber;
         number.current?.setCustomValidity('');

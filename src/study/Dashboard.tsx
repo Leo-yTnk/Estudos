@@ -7,6 +7,17 @@ import { subjectShortcuts } from '../lib/subjectShortcuts';
 import { useApp } from '../state/AppState';
 import type { Entry } from '../types';
 import { SubjectMark } from './Subjects';
+import morningIllustration from '../assets/hero/morning.webp';
+import afternoonIllustration from '../assets/hero/afternoon.webp';
+import eveningIllustration from '../assets/hero/evening.webp';
+import nightIllustration from '../assets/hero/night.webp';
+
+const heroPeriods = [
+  { start: 19, image: nightIllustration, greeting: 'Boa noite', message: 'Anote o que fica para amanhã e aproveite a noite para descansar.' },
+  { start: 17, image: eveningIllustration, greeting: 'Bom fim de tarde', message: 'Que tal revisar o que aprendeu hoje e organizar o que ainda falta?' },
+  { start: 12, image: afternoonIllustration, greeting: 'Boa tarde', message: 'Escolha uma tarefa e reserve um tempo para avançar com calma.' },
+  { start: 5, image: morningIllustration, greeting: 'Bom dia', message: 'Dê uma olhada na agenda e escolha por onde começar.' },
+] as const;
 
 export function Dashboard({ subject, newSubject, focus, add, openTask }: {
   subject: (id: string, view: SubjectView) => void; newSubject: () => void; focus: () => void;
@@ -21,6 +32,9 @@ export function Dashboard({ subject, newSubject, focus, add, openTask }: {
     return () => { window.clearInterval(timer); window.removeEventListener('focus', refresh); };
   }, []);
   const today = asLocalDate(now.toISOString());
+  const hour = now.getHours();
+  const hero = heroPeriods.find(({ start }) => hour >= start) ?? heroPeriods[0];
+  const name = data.profile.name.trim();
   const pending = rankedTasks(data, now);
   const next = pending[0];
   const tasks = data.entries.filter((item) => item.kind === 'task');
@@ -53,9 +67,13 @@ export function Dashboard({ subject, newSubject, focus, add, openTask }: {
         : next ? 'Adiante “' + next.title + '” se tiver ' + next.minutes + ' min disponíveis.'
           : data.subjects.length ? 'Aproveite para revisar uma matéria pelos atalhos.' : 'Crie uma matéria para começar a organizar seus estudos.';
   return <div className="nw-stack nw-dashboard">
-    <header className="nw-welcome">
-      <div className="nw-date"><CalendarDays size={15} />{date}</div>
-      <h1>{data.profile.name.trim() ? 'Olá, ' + data.profile.name.trim() + '.' : 'Olá!'}</h1>
+    <header className="surface nw-welcome">
+      <img className="nw-welcome-image" src={hero.image} alt="" fetchPriority="high" decoding="async" />
+      <div className="nw-welcome-copy">
+        <time className="nw-date" dateTime={today}><CalendarDays size={15} aria-hidden="true" />{date}</time>
+        <h1>{hero.greeting}{name ? ', ' + name : ''}!</h1>
+        <p>{hero.message}</p>
+      </div>
     </header>
     <div className="today-summary">
       <Surface className="nw-focus-card today-next">

@@ -84,7 +84,6 @@
 .nw-search-results button svg { flex:none; }
 .nw-shell .screen { max-width:900px; }
 .nw-shell .toast { bottom:24px; }
-.nw-shell .sheet-root { z-index:30; }
 @media (max-width:1200px) { .nw-focus-rings { right:-78px; opacity:.62; } }
 @media (max-width:820px) {
   .nw-dashboard-grid { grid-template-columns:1fr; }

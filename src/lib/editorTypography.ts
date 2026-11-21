@@ -1,8 +1,17 @@
 export const editorTextStyles = [
-  ['h1', 'H1 · Título'], ['h2', 'H2 · Seção'], ['h3', 'H3 · Subseção'],
-  ['h4', 'H4'], ['h5', 'H5'], ['h6', 'H6'], ['p', 'Parágrafo'],
+  ['h1', 'Título 1'], ['h2', 'Título 2'], ['h3', 'Título 3'],
+  ['h4', 'Título 4'], ['h5', 'Título 5'], ['h6', 'Título 6'], ['p', 'Corpo do texto'],
   ['quote', 'Citação'], ['list', 'Lista e checklist'], ['table', 'Tabela'], ['code', 'Bloco de código'],
 ] as const;
+
+export function editorWeightLabel(weight: number): string {
+  return fontWeightNames[weight] ?? String(weight);
+}
+
+const fontWeightNames: Partial<Record<number, string>> = {
+  100: 'Thin', 200: 'Extralight', 300: 'Light', 400: 'Regular', 500: 'Medium',
+  600: 'Semibold', 700: 'Bold', 800: 'Extrabold', 900: 'Black', 1000: 'Extra Black',
+};
 
 export type EditorTextStyle = typeof editorTextStyles[number][0];
 export type EditorTypography = Partial<Record<EditorTextStyle, { font?: string; weight?: number }>>;

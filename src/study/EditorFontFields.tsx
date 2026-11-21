@@ -1,12 +1,7 @@
 import { useState } from 'react';
 import { Button } from '../components/ui';
 import { Select } from '../components/Select';
-import { allowsWeight, editorFonts, findEditorFont } from '../lib/editorTypography';
-
-const weightNames: Record<number, string> = {
-  100: 'Fino', 200: 'Extra leve', 300: 'Leve', 400: 'Regular', 500: 'Médio',
-  600: 'Seminegrito', 700: 'Negrito', 800: 'Extranegrito', 900: 'Preto', 1000: 'Extra preto',
-};
+import { allowsWeight, editorFonts, editorWeightLabel, findEditorFont } from '../lib/editorTypography';
 
 export function FontSelect({ value, onChange, label = 'Fonte', returnFocus, mixed }: {
   value: string; onChange: (value: string) => void; label?: string; returnFocus?: boolean; mixed?: boolean;
@@ -31,7 +26,7 @@ export function ExactFontWeight({ font, value, onChange, label = 'Peso da fonte'
     else setInvalid(true);
   };
   return <div className="note-weight-custom">
-    <input type="number" min={font.range?.[0]} max={font.range?.[1]} step={1} value={draft} autoFocus={autoFocus}
+    <input className="ds-input" type="number" min={font.range?.[0]} max={font.range?.[1]} step={1} value={draft} autoFocus={autoFocus}
       aria-label={label + ' exato'} aria-invalid={invalid} placeholder={font.range?.join('–')}
       onChange={(event) => { setDraft(event.target.value); setInvalid(false); }}
       onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); setWeight(); } }} />
@@ -46,12 +41,13 @@ export function FontWeightField({ font, value, onChange, label = 'Peso da fonte'
   const [custom, setCustom] = useState(false);
   const options: [string, string][] = [['', onCustom ? 'Peso' : 'Padrão']];
   options.push(...font.weights.map((weight): [string, string] => [
-    String(weight), weightNames[weight] ? weightNames[weight] + ' (' + weight + ')' : String(weight),
+    String(weight), editorWeightLabel(weight),
   ]));
   if (value !== undefined && !font.weights.includes(value)) options.push([String(value), String(value)]);
   if (font.range) options.push(['custom', 'Peso exato…']);
+  const displayValue = onCustom ? (value === undefined ? 'Peso' : editorWeightLabel(value)) : undefined;
   return <div className="note-weight-field">
-    <Select label={label} value={custom ? 'custom' : value?.toString() ?? ''} options={options} displayValue={onCustom ? value?.toString() ?? 'Peso' : undefined} returnFocus={!onCustom} onChange={(chosen) => {
+    <Select label={label} value={custom ? 'custom' : value?.toString() ?? ''} options={options} displayValue={displayValue} returnFocus={!onCustom} onChange={(chosen) => {
       if (chosen === 'custom') {
         if (onCustom) onCustom();
         else setCustom(true);

@@ -61,10 +61,12 @@ export function WorkspaceNavigation({ current, search, settings, notebook }: {
   return <header className="workspace-header">
     <div className="workspace-header-inner">
       <Toolbar label="Histórico e páginas" className="workspace-history">
-        {notebook && <IconButton id={notebook.toggleId} label={notebook.pagesOpen ? 'Recolher páginas da matéria' : 'Expandir páginas da matéria'}
-          aria-expanded={notebook.pagesOpen} aria-controls={notebook.sidebarId} onClick={notebook.togglePages}>
-          {notebook.pagesOpen ? <PanelLeftClose size={19} /> : <PanelLeftOpen size={19} />}
-        </IconButton>}
+        <div className="workspace-sidebar-toggle" data-visible={!!notebook} aria-hidden={!notebook}>
+          <IconButton id={notebook?.toggleId} label={notebook?.pagesOpen ? 'Recolher páginas da matéria' : 'Expandir páginas da matéria'}
+            aria-expanded={notebook?.pagesOpen} aria-controls={notebook?.sidebarId} disabled={!notebook} onClick={notebook?.togglePages}>
+            {notebook?.pagesOpen ? <PanelLeftClose size={19} /> : <PanelLeftOpen size={19} />}
+          </IconButton>
+        </div>
         <IconButton label={!history.back && notebook ? 'Voltar para páginas' : 'Voltar'} disabled={!history.back && !notebook}
           onClick={() => {
             if (history.back) window.history.back();

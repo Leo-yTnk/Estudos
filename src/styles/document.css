@@ -238,7 +238,7 @@ html:has(.nw-shell[data-notebook-page]) {
   min-height: 48px;
   padding: var(--space-2) max(var(--space-3), calc((100% - var(--content-width)) / 2));
   background: var(--surface-soft);
-  border-block: 1px solid var(--line);
+  border-block-end: 1px solid var(--line);
 }
 .note-command-scroll {
   display: flex;

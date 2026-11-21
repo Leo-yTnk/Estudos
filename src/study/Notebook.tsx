@@ -1,18 +1,29 @@
-import { lazy, Suspense, useState, type FormEvent } from 'react';
-import { ArrowLeft, BookOpen, Ellipsis, FileText, HardDrive, Plus, Trash2 } from 'lucide-react';
+import { lazy, Suspense, useId, useRef, useState, type FormEvent } from 'react';
+import { ArrowLeft, BookOpen, Ellipsis, FileText, HardDrive, PanelLeftClose, PanelLeftOpen, Plus, Trash2 } from 'lucide-react';
 import { Button, EmptyState, IconButton, Segment, Stack, Surface } from '../components/ui';
 import { ElasticSheet } from '../components/ElasticSheet';
 import { fromBlocks, noteText } from '../lib/documents';
 import { routeHref } from '../lib/navigation';
 import { useApp } from '../state/AppState';
 import { uid } from '../types';
+import { useMobileEditor } from './NotebookToolbar';
+import { SubjectMark } from './Subjects';
 const RichTextEditor = lazy(() => import('./RichTextEditor').then((module) => ({ default: module.RichTextEditor })));
 
 export function Notebook({ subjectId, noteId, open }: { subjectId: string; noteId?: string; open: (id?: string) => void }) {
   const app = useApp();
   const [title, setTitle] = useState('');
-  const [showOptions, setShowOptions] = useState(false);
-  const notes = app.data.notes.filter((note) => note.subjectId === subjectId).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const [optionsNoteId, setOptionsNoteId] = useState<string>();
+  const [desktopPagesOpen, setDesktopPagesOpen] = useState(true);
+  const [mobilePagesOpen, setMobilePagesOpen] = useState(false);
+  const mobile = useMobileEditor();
+  const pagesOpen = mobile ? mobilePagesOpen : desktopPagesOpen;
+  const setPagesOpen = mobile ? setMobilePagesOpen : setDesktopPagesOpen;
+  const toggle = useRef<HTMLButtonElement>(null);
+  const sidebarId = useId();
+  const subject = app.data.subjects.find(({ id }) => id === subjectId);
+  const notes = app.data.notes.filter((note) => note.subjectId === subjectId);
+  const directoryHref = routeHref({ area: 'materias', subjectId, view: 'caderno' });
   const note = notes.find(({ id }) => id === noteId);
   const add = (event: FormEvent) => {
     event.preventDefault();
@@ -29,7 +40,7 @@ export function Notebook({ subjectId, noteId, open }: { subjectId: string; noteI
         onChange={(event) => setTitle(event.target.value)} />
       <Button type="submit" variant="primary" icon={<Plus size={16} />}>Criar página</Button>
     </form>
-    {notes.length ? <ul className="notebook-page-list">{notes.map((page) => <li key={page.id}>
+    {notes.length ? <ul className="notebook-page-list">{notes.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).map((page) => <li key={page.id}>
       <a href={routeHref({ area: 'materias', subjectId, view: 'caderno', noteId: page.id })}>
         <FileText size={19} aria-hidden="true" />
         <span><strong>{page.title || 'Sem título'}</strong>
@@ -39,10 +50,19 @@ export function Notebook({ subjectId, noteId, open }: { subjectId: string; noteI
       description="Crie uma página para guardar os resumos, exercícios e links desta matéria." /></Surface>}
   </Stack>;
 
-  return <section className="document-sheet" aria-label="Editor do caderno">
+  const closePages = () => {
+    setPagesOpen(false);
+    toggle.current?.focus({ preventScroll: true });
+  };
+
+  return <section className="document-layout" data-pages-open={pagesOpen} aria-label="Editor do caderno">
     <header className="document-top">
+      <IconButton ref={toggle} label={pagesOpen ? 'Recolher páginas da matéria' : 'Expandir páginas da matéria'}
+        aria-expanded={pagesOpen} aria-controls={sidebarId} onClick={() => setPagesOpen(!pagesOpen)}>
+        {pagesOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
+      </IconButton>
       <nav className="document-path" aria-label="Navegação do caderno">
-        <a href={routeHref({ area: 'materias', subjectId, view: 'caderno' })}><ArrowLeft size={17} aria-hidden="true" />Páginas</a>
+        <a href={directoryHref}><ArrowLeft size={17} aria-hidden="true" />Páginas</a>
         <span aria-hidden="true">/</span>
         <input className="document-title" aria-label="Título da página" value={note.title} placeholder="Sem título" maxLength={150}
           onChange={(event) => app.updateNote(note.id, { title: event.target.value })} />
@@ -50,12 +70,29 @@ export function Notebook({ subjectId, noteId, open }: { subjectId: string; noteI
       <span className="document-autosave" title="Salvamento automático neste dispositivo">
         <HardDrive size={16} aria-hidden="true" /><span className="visually-hidden">Salvamento automático neste dispositivo</span>
       </span>
-      <IconButton label="Opções da página" aria-haspopup="dialog" onClick={() => setShowOptions(true)}><Ellipsis size={22} /></IconButton>
+      <IconButton label="Opções da página" aria-haspopup="dialog" onClick={() => setOptionsNoteId(note.id)}><Ellipsis size={22} /></IconButton>
     </header>
-    <Suspense fallback={<p role="status" className="document-loading nw-muted">Abrindo editor…</p>}>
-      <RichTextEditor key={note.id} content={note.content || fromBlocks(note.blocks)} onChange={(content) => app.updateNote(note.id, { content })} />
-    </Suspense>
-    {showOptions && <ElasticSheet title="Opções da página" onClose={() => setShowOptions(false)}>
+    <nav id={sidebarId} className="document-sidebar" aria-label="Páginas da matéria" hidden={!pagesOpen}
+      onKeyDown={(event) => { if (event.key === 'Escape') closePages(); }}>
+      <div className="document-sidebar-heading">{subject && <SubjectMark subject={subject} />}
+        <h2>{subject?.title || 'Páginas da matéria'}</h2>
+      </div>
+      <ul>{notes.map((page) => <li key={page.id}>
+        <a href={routeHref({ area: 'materias', subjectId, view: 'caderno', noteId: page.id })}
+          aria-current={page.id === note.id ? 'page' : undefined}
+          onClick={(event) => {
+            if (mobile && !event.defaultPrevented && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) closePages();
+          }}>
+          <FileText size={17} aria-hidden="true" /><span>{page.title || 'Sem título'}</span>
+        </a>
+      </li>)}</ul>
+    </nav>
+    <div className="document-writing-area">
+      <Suspense fallback={<p role="status" className="document-loading nw-muted">Abrindo editor…</p>}>
+        <RichTextEditor key={note.id} content={note.content || fromBlocks(note.blocks)} onChange={(content) => app.updateNote(note.id, { content })} />
+      </Suspense>
+    </div>
+    {optionsNoteId === note.id && <ElasticSheet title="Opções da página" onClose={() => setOptionsNoteId(undefined)}>
       {(dismiss) => <Stack>
         <Segment label="Modo do editor" value={app.data.profile.toolbarMode} onChange={(toolbarMode) => {
           app.updateProfile({ toolbarMode });

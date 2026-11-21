@@ -143,7 +143,8 @@ function AppContent() {
   const createSubject = () => setSheet({ kind: 'subject' });
   const sheetTitles = { settings: 'Configurações', break: 'Uma pausa para respirar', search: 'Buscar no NowWork',
     task: 'Novo registro', subject: sheet?.kind === 'subject' && sheet.subject ? 'Editar matéria' : 'Nova matéria' };
-  const routeKey = route.area === 'materias' ? noteId || route.subjectId || route.area : route.area;
+  const routeKey = noteId ? 'editor-' + subjectId
+    : route.area === 'materias' ? route.subjectId || route.area : route.area;
   return <div className="nw-shell" data-notebook-page={noteId ? true : undefined}>
     <a className="workspace-skip" href="#main-content" onClick={(event) => {
       event.preventDefault();

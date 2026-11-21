@@ -35,7 +35,8 @@ export function ElasticSheet({ title, children, onClose }: { title: string; chil
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     trigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const target = panel.current?.querySelector<HTMLElement>('.sheet-scroll input:not([type="file"]), .sheet-scroll textarea');
+    const fields = panel.current?.querySelectorAll<HTMLElement>('.sheet-scroll input:not([type="file"]), .sheet-scroll textarea');
+    const target = Array.from(fields ?? []).find((field) => field.getClientRects().length > 0);
     (target || panel.current)?.focus({ preventScroll: true });
     to(getLimits().min);
     const onKey = (event: KeyboardEvent) => {

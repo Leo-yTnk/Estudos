@@ -2,8 +2,8 @@
 .icon-button { border: 1px solid var(--control-border); color: var(--ink); background: var(--surface); min-width: 42px; min-height: 42px; display: inline-grid; place-items: center; border-radius: var(--radius-sm); transition: background .18s, border-color .18s; }
 .icon-button:hover { background: var(--surface-soft); }
 .eyebrow { font-size: 10px; font-weight: 740; letter-spacing: .16em; line-height: 1.35; color: var(--accent); }
-.surface { position: relative; background: var(--surface-fill, var(--surface)); border: 1px solid var(--card-edge); border-radius: var(--surface-radius, var(--radius-lg)); box-shadow: var(--shadow-card); }
-.surface::after { content: ''; pointer-events: none; position: absolute; inset: 5px; border: 1px dashed var(--card-stitch); border-radius: calc(var(--surface-radius, var(--radius-lg)) - 6px); }
+.surface { position: relative; background: var(--surface-fill, var(--surface)); border: 2px solid var(--card-edge); border-radius: var(--surface-radius, var(--radius-lg)); box-shadow: var(--shadow-card); }
+.surface::after { content: ''; pointer-events: none; position: absolute; inset: 5px; border: 2px dashed var(--card-stitch); border-radius: calc(var(--surface-radius, var(--radius-lg)) - 6px); }
 .surface > * { position: relative; z-index: 1; }
 .btn { appearance: none; border: 1px solid transparent; display: inline-flex; justify-content: center; align-items: center; gap: 8px; border-radius: var(--radius-sm); font-weight: 660; line-height: 1.1; white-space: nowrap; transition: background-color var(--time-quick) var(--ease-standard), border-color var(--time-quick), color var(--time-quick); }
 .btn-sm { padding: 10px 13px; min-height: 36px; font-size: 12px; }

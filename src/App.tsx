@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useId, useRef, useState, type ChangeEvent } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ArrowLeft, Check, CircleHelp, Coffee, Download, Pencil, ShieldCheck, Sparkles, Trash2, Upload, X } from 'lucide-react';
 import { AppProvider, useApp } from './state/AppState';
@@ -16,6 +16,7 @@ import { Dashboard } from './study/Dashboard';
 import { Subjects, SubjectMark } from './study/Subjects';
 import { Tasks, Week } from './study/Planner';
 import { Notebook } from './study/Notebook';
+import { useMobileEditor } from './study/NotebookToolbar';
 import { Review } from './study/Review';
 import { WorkspaceSearch, TaskForm, SubjectForm } from './study/WorkspacePanels';
 
@@ -107,6 +108,26 @@ function AppContent() {
     ? app.data.notes.find((note) => note.subjectId === subject?.id && note.id === route.noteId)?.id : undefined;
   const { visitSubject } = app;
   const subjectId = subject?.id;
+  const mobile = useMobileEditor();
+  const sidebarId = useId();
+  const sidebarToggleId = useId();
+  const [desktopPagesOpen, setDesktopPagesOpen] = useState(true);
+  const [mobilePagesOpen, setMobilePagesOpen] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const notebookSubjectId = noteId ? subjectId : undefined;
+  const pagesOpen = mobile ? mobilePagesOpen : desktopPagesOpen;
+  const setPagesOpen = mobile ? setMobilePagesOpen : setDesktopPagesOpen;
+  const closePages = () => {
+    setPagesOpen(false);
+    document.getElementById(sidebarToggleId)?.focus({ preventScroll: true });
+  };
+  useEffect(() => {
+    setDesktopPagesOpen(true);
+  }, [notebookSubjectId]);
+  useEffect(() => {
+    setMobilePagesOpen(false);
+    setOptionsOpen(false);
+  }, [noteId]);
   useEffect(() => {
     if (app.ready && subjectId) visitSubject(subjectId);
   }, [app.ready, subjectId, visitSubject]);
@@ -137,7 +158,13 @@ function AppContent() {
       event.preventDefault();
       document.getElementById('main-content')?.focus();
     }}>Ir para o conteúdo</a>
-    <WorkspaceNavigation current={route.area} search={() => setSheet({ kind: 'search' })} settings={() => setSheet({ kind: 'settings' })} />
+    <WorkspaceNavigation current={route.area} search={() => setSheet({ kind: 'search' })} settings={() => setSheet({ kind: 'settings' })}
+      notebook={noteId && subjectId ? {
+        sidebarId, toggleId: sidebarToggleId, pagesOpen,
+        togglePages: () => pagesOpen ? closePages() : setPagesOpen(true),
+        directoryHref: routeHref({ area: 'materias', subjectId, view: 'caderno' }),
+        openOptions: () => setOptionsOpen(true),
+      } : undefined} />
     <main className={'nw-main' + (noteId ? ' document-workspace' : '')} id="main-content" tabIndex={-1}>
       <motion.div key={routeKey} initial={reduce ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
         transition={reduce ? { duration: 0 } : springs.panel}>
@@ -145,7 +172,8 @@ function AppContent() {
           focus={() => open(areas.estudar)} add={newTask} openTask={openTask} />}
         {route.area === 'materias' && (!subject
           ? <Subjects open={subjectPage} create={createSubject} />
-          : noteId ? <Notebook key={subject.id} subjectId={subject.id} noteId={noteId} open={(id) => subjectPage(subject.id, 'caderno', id)} />
+          : noteId ? <Notebook key={subject.id} subjectId={subject.id} noteId={noteId} open={(id) => subjectPage(subject.id, 'caderno', id)}
+            pageControls={{ mobile, pagesOpen, sidebarId, closePages, optionsOpen, closeOptions: () => setOptionsOpen(false) }} />
           : <Stack className="workspace-page">
               <div className="workspace-page-heading">
                 <PageHeading title={subject.title} icon={<div className="subject-heading-icons">

@@ -9,13 +9,13 @@ import { useApp } from '../state/AppState';
 export interface EditorAction {
   label: string;
   icon: ReactNode;
-  pressed?: boolean;
+  pressed?: boolean | 'mixed';
   disabled?: boolean;
   run: () => void;
 }
 
 export function EditorActionButton({ action }: { action: EditorAction }) {
-  return <IconButton label={action.label} aria-pressed={action.pressed} disabled={action.disabled}
+  return <IconButton label={action.pressed === 'mixed' ? action.label + ' (Misto)' : action.label} aria-pressed={action.pressed} disabled={action.disabled}
     onMouseDown={(event) => event.preventDefault()} onClick={action.run}>{action.icon}</IconButton>;
 }
 
@@ -72,6 +72,8 @@ export function NotebookToolbar({ simple, ribbon, insertion, supplemental, categ
 }) {
   const [simpleCategory, setSimpleCategory] = useState('format');
   const root = useRef<HTMLDivElement>(null);
+  const [narrowToolbar, setNarrowToolbar] = useState(false);
+  const compact = mobile || narrowToolbar;
   const trigger = useRef<HTMLElement>(null);
   const inset = useKeyboardInset(mobile);
   const reduced = useReducedMotion();
@@ -84,7 +86,17 @@ export function NotebookToolbar({ simple, ribbon, insertion, supplemental, categ
   const extraRef = useRef(clearExtra);
   extraRef.current = clearExtra;
 
-  useEffect(() => { setPanel(null); extraRef.current(); }, [toolbarMode, mobile, setPanel]);
+  useEffect(() => {
+    const element = root.current;
+    if (mobile || !element) return;
+    const update = () => setNarrowToolbar(element.clientWidth < 560);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [mobile]);
+
+  useEffect(() => { setPanel(null); extraRef.current(); }, [toolbarMode, mobile, compact, setPanel]);
   useEffect(() => {
     if (!open && panel !== 'insert') return;
     const outside = (event: PointerEvent) => {
@@ -143,9 +155,10 @@ export function NotebookToolbar({ simple, ribbon, insertion, supplemental, categ
         <div className="note-ribbon-extra" role="group" aria-label="Mais ferramentas">
           {more}{categories.filter(({ id }) => id === 'context').map(categoryButton)}
         </div>
-      </div> : panel === 'insert' ? <div className="note-simple-insertion">{insert}{insertion}</div> : <>
+      </div> : panel === 'insert' ? <div className="note-simple-insertion">{insert}{insertion}</div>
+      : <div className="note-command-scroll">
         <div className="note-command-group">{simple.history}</div>
-        {mobile ? <div className="note-command-group">
+        {compact ? <div className="note-command-group">
           {([['text', 'Texto', Type], ['lists', 'Listas', List]] as const).map(([id, label, Icon]) =>
             <IconButton key={id} label={label} aria-expanded={panel === id && !extra} onMouseDown={(event) => event.preventDefault()}
               onClick={(event) => togglePanel(id, event.currentTarget)}><Icon size={19} /></IconButton>)}
@@ -154,7 +167,7 @@ export function NotebookToolbar({ simple, ribbon, insertion, supplemental, categ
           <div className="note-command-group">{simple.lists}</div>
         </>}
         <div className="note-command-group">{insert}{more}</div>
-      </>}
+      </div>}
       {mobile && inset > 0 && <IconButton label="Recolher teclado" onMouseDown={(event) => event.preventDefault()}
         onClick={dismissKeyboard}><KeyboardOff size={18} /></IconButton>}
     </div>

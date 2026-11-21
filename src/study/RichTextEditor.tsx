@@ -11,17 +11,17 @@ import { collectionTypes, createCollection, type CollectionKind } from '../lib/c
 import { importLocalImage } from '../lib/localImages';
 import { blockViews, collectionIcons, editDocumentBlock } from './collections/DocumentBlocks';
 import { Options } from './collections/Fields';
-import { NumberSlider } from '../components/NumberSlider';
 import { Button, IconButton, Toolbar } from '../components/ui';
 import { documentExtensions, safeLink } from '../lib/documents';
 import { copyNoteSelection, pasteNoteSelection } from '../lib/noteClipboard';
 import { useApp } from '../state/AppState';
-import { allowsWeight, defaultEditorFont, editorTextStyles, editorTypographyVariables, findEditorFont, type EditorTextStyle } from '../lib/editorTypography';
+import { editorTypographyVariables, findEditorFont } from '../lib/editorTypography';
+import { selectionTypography } from '../lib/selectionTypography';
 import { FontSelect } from './EditorFontFields';
 import { canMoveBlock, moveBlock } from '../lib/editorBlocks';
 import { EditorActionButton, NotebookToolbar, useMobileEditor, type EditorAction, type ToolGroup, type ToolCategory } from './NotebookToolbar';
 
-const textLevels = ['Corpo', ...editorTextStyles.slice(0, 6).map(([id]) => id.toUpperCase())];
+const textLevels = ['Corpo', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'];
 const inkColors = [['Vinho', '#a52343'], ['Laranja', '#a34e20'], ['Verde', '#237456'], ['Azul', '#315bb1'], ['Roxo', '#7845a9']];
 const highlightColors = [['Amarelo', '#f7e39b'], ['Verde', '#a9ebca'], ['Azul', '#b6d9ff'], ['Violeta', '#dcc7ff'], ['Rosa', '#ffbfd7']];
 
@@ -40,21 +40,24 @@ function selectionBeforeBlur(view: EditorView): Selection {
     ? new TextSelection(anchor, head) : selection;
 }
 
-function TypographySlider({ label, value, min, max, stops, describe, apply, reset }: {
-  label: string; value: number; min: number; max: number; stops?: readonly number[];
-  describe?: (value: number) => string; apply: (value: number) => void; reset?: () => void;
+function TypographySlider({ label, value, min, max, step = 1, describe = String, onChange }: {
+  label: string; value: number | 'Misto'; min: number; max: number; step?: number;
+  describe?: (value: number) => string; onChange: (value: number) => void;
 }) {
-  const [draft, setDraft] = useState(() => stops
-    ? stops.reduce((best, stop) => Math.abs(stop - value) < Math.abs(best - value) ? stop : best)
-    : Math.min(max, Math.max(min, value)));
-  return <form className="note-typography-slider" onSubmit={(event) => { event.preventDefault(); apply(draft); }}>
-    <NumberSlider label={label} value={draft} min={min} max={max} stops={stops} vertical describe={describe} onChange={setDraft} />
-    {describe && <output>{describe(draft)}</output>}
-    <Toolbar>
-      <Button size="sm" type="submit" variant="primary">Aplicar</Button>
-      {reset && <Button size="sm" onClick={reset}>Padrão</Button>}
-    </Toolbar>
-  </form>;
+  const thumb = value === 'Misto' ? min : Math.min(max, Math.max(min, Math.round(value / step) * step));
+  const display = value === 'Misto' ? value : describe(value);
+  return <div className="note-typography-slider">
+    <input type="range" aria-label={label} aria-valuetext={display} min={min} max={max} step={step} value={thumb}
+      onChange={(event) => onChange(event.currentTarget.valueAsNumber)}
+      onClick={(event) => { if (value !== thumb) onChange(event.currentTarget.valueAsNumber); }}
+      onKeyDown={(event) => {
+        if (value !== thumb && (event.key === 'Enter' || event.key === ' ')) {
+          event.preventDefault();
+          onChange(thumb);
+        }
+      }} />
+    <output>{display}</output>
+  </div>;
 }
 
 export function RichTextEditor({ content, onChange }: { content: JSONContent; onChange: (content: JSONContent) => void }) {
@@ -93,15 +96,21 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
       const selectedBlock = selection instanceof NodeSelection ? selection.node.type.name : null;
       const heading = editor.isActive('heading');
       const block = editor.getAttributes(heading ? 'heading' : 'paragraph');
-      const style: EditorTextStyle = heading ? `h${block.level}` as EditorTextStyle
-        : editor.isActive('codeBlock') ? 'code' : editor.isActive('blockquote') ? 'quote'
-          : list ? 'list' : editor.isActive('table') ? 'table' : 'p';
+      const typography = selectionTypography(editor.state, data.profile.editorTypography);
       const indent = Number(block.indent) || 0;
+      const markState = (name: Parameters<typeof typography.mark>[0]) => {
+        const state = typography.mark(name);
+        return state === 'Misto' ? 'mixed' as const : state;
+      };
       return {
-        list, block, textStyle, selectedBlock, style, headingLevel: heading ? block.level : 0, pageWidth: editor.state.doc.attrs.noteWidth ?? 'standard',
-        superscript: editor.isActive('superscript'), subscript: editor.isActive('subscript'), highlightColor: editor.getAttributes('highlight').color,
-        bold: editor.isActive('bold'), italic: editor.isActive('italic'), underline: editor.isActive('underline'),
-        strike: editor.isActive('strike'), highlight: editor.isActive('highlight'),
+        list, block, textStyle, selectedBlock, level: typography.level, weight: typography.weight,
+        fontFamily: typography.fontFamily, fontSize: typography.fontSize,
+        canStyle: !selectedBlock && (editor.can().setParagraph() || editor.can().setHeading({ level: 1 })),
+        canWeight: editor.can().setMark('textStyle'),
+        pageWidth: editor.state.doc.attrs.noteWidth ?? 'standard',
+        superscript: markState('superscript'), subscript: markState('subscript'), highlightColor: editor.getAttributes('highlight').color,
+        bold: markState('bold'), italic: markState('italic'), underline: markState('underline'),
+        strike: markState('strike'), highlight: editor.isActive('highlight'),
         bullet: editor.isActive('bulletList'), ordered: editor.isActive('orderedList'), task: editor.isActive('taskList'),
         quote: editor.isActive('blockquote'), code: editor.isActive('codeBlock'), link: editor.isActive('link'),
         selected: !editor.state.selection.empty, table: editor.isActive('table'),
@@ -120,7 +129,7 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
   const selectionChain = () => {
     const chain = editor.chain();
     const saved = blurredSelection.current;
-    if (!editor.view.hasFocus() && saved?.doc === editor.state.doc) {
+    if (!editor.view.hasFocus() && saved?.doc === editor.state.doc && !saved.selection.eq(editor.state.selection)) {
       chain.command(({ tr }) => { tr.setSelection(saved.selection); return true; });
     }
     return chain;
@@ -239,36 +248,43 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
     { label: 'Copiar', icon: <Copy size={17} />, disabled: !tools.selected, run: () => copy(false) },
     { label: 'Recortar', icon: <Scissors size={17} />, disabled: !tools.selected, run: () => copy(true) },
   ];
-  const applyStyle = (value: number) => {
-    setPopover(null);
-    const level = value as 0 | 1 | 2 | 3 | 4 | 5 | 6;
-    if (level === 0) focus().setParagraph().run();
-    else focus().setHeading({ level }).run();
+  const keepSelection = () => {
+    blurredSelection.current = { doc: editor.state.doc, selection: editor.state.selection };
   };
-  const styleControl = <Button size="sm" variant="ghost" className="note-format-trigger" aria-label="Estilo"
+  const applyStyle = (value: number) => {
+    if (tools.level === value) return;
+    const level = value as 0 | 1 | 2 | 3 | 4 | 5 | 6;
+    const chain = selectionChain();
+    if (level === 0) chain.setParagraph().run();
+    else chain.setHeading({ level }).run();
+    keepSelection();
+  };
+  const styleControl = <Button size="sm" variant="ghost" className="note-format-trigger"
+    aria-label={`Estilo: ${tools.level === 'Misto' ? tools.level : textLevels[tools.level]}`} disabled={!tools.canStyle}
     aria-expanded={popover === 'style'} onMouseDown={(event) => event.preventDefault()} onClick={() => toggle('style')}>
-    {textLevels[tools.headingLevel] ?? textLevels[0]}
+    {tools.level === 'Misto' ? tools.level : textLevels[tools.level]}
   </Button>;
-  const inlineFont = findEditorFont(tools.textStyle.fontFamily);
-  const defaultFont = findEditorFont(data.profile.editorTypography[tools.style]?.font) ?? defaultEditorFont(tools.style);
-  const effectiveFont = inlineFont ?? defaultFont;
-  const fontSelect = <FontSelect returnFocus={false} value={inlineFont?.name ?? tools.textStyle.fontFamily ?? ''} onChange={(name) => {
+  const fontFamily = tools.fontFamily === 'Misto' ? '' : tools.fontFamily ?? '';
+  const inlineFont = findEditorFont(fontFamily);
+  const fontSelect = <FontSelect returnFocus={false} value={inlineFont?.name ?? fontFamily} mixed={tools.fontFamily === 'Misto'} onChange={(name) => {
     const font = findEditorFont(name);
     const chain = focus();
-    if (font) chain.setFontFamily(font.family);
-    else chain.unsetFontFamily();
-    if (!allowsWeight(tools.textStyle.fontWeight, font ?? defaultFont)) chain.setMark('textStyle', { fontWeight: null }).removeEmptyTextStyle();
-    chain.run();
+    (font ? chain.setFontFamily(font.family) : chain.unsetFontFamily()).run();
   }} />;
   const applyWeight = (weight?: number) => {
-    setPopover(null);
-    focus().setMark('textStyle', { fontWeight: weight ?? null }).removeEmptyTextStyle().run();
+    if (weight !== undefined && tools.weight === weight && !tools.bold) return;
+    const chain = selectionChain();
+    if (weight !== undefined) chain.unsetBold();
+    chain.setMark('textStyle', { fontWeight: weight ?? null }).removeEmptyTextStyle().run();
+    keepSelection();
   };
-  const weightField = <Button size="sm" variant="ghost" className="note-format-trigger" aria-label="Peso da fonte"
+  const weightField = <Button size="sm" variant="ghost" className="note-format-trigger"
+    aria-label={`Peso da fonte: ${tools.weight}`} disabled={!tools.canWeight}
     aria-expanded={popover === 'weight'} onMouseDown={(event) => event.preventDefault()} onClick={() => toggle('weight')}>
-    {tools.textStyle.fontWeight ?? 'Peso'}
+    {tools.weight}
   </Button>;
-  const activeSize = String(tools.textStyle.fontSize ?? '').replace(/px$/, '');
+  const mixedSize = tools.fontSize === 'Misto';
+  const activeSize = mixedSize ? '' : String(tools.fontSize ?? '').replace(/px$/, '');
   const applySize = (refocus: boolean) => {
     if (sizeDraft === null) return;
     setSizeDraft(null);
@@ -281,7 +297,7 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
     (value ? chain.setFontSize(Number(value) + 'px') : chain.unsetFontSize()).run();
   };
   const sizeInput = <input className="ds-input note-size-input" aria-label="Tamanho da fonte" title="Tamanho em pixels"
-    inputMode="decimal" placeholder="Auto" value={sizeDraft ?? activeSize} onChange={(event) => setSizeDraft(event.target.value)}
+    inputMode="decimal" data-mixed={mixedSize} placeholder={mixedSize ? 'Misto' : 'Auto'} value={sizeDraft ?? activeSize} onChange={(event) => setSizeDraft(event.target.value)}
     onBlur={() => applySize(false)} onKeyDown={(event) => {
       if (event.key === 'Enter') { event.preventDefault(); applySize(true); }
       if (event.key === 'Escape') { event.preventDefault(); setSizeDraft(null); }
@@ -367,13 +383,12 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
   const extra = linkForm || (popover && <section className="note-ribbon-panel" aria-label={title}>
     <div className="nw-section-heading"><strong>{title}</strong>
       <IconButton label="Fechar opções" onClick={() => { setPopover(null); focus().run(); }}>×</IconButton></div>
-    {popover === 'style' ? <TypographySlider label="Nível do texto" value={tools.headingLevel} min={0} max={6}
-      describe={(value) => textLevels[value]} apply={applyStyle} />
-    : popover === 'weight' ? <TypographySlider label="Peso da fonte" min={effectiveFont.range?.[0] ?? effectiveFont.weights[0]}
-      max={effectiveFont.range?.[1] ?? effectiveFont.weights.at(-1)!} stops={effectiveFont.range ? undefined : effectiveFont.weights}
-      value={tools.textStyle.fontWeight ?? data.profile.editorTypography[tools.style]?.weight
-        ?? (tools.headingLevel ? tools.headingLevel === 2 || tools.headingLevel === 3 ? 700 : 800 : 400)}
-      apply={applyWeight} reset={() => applyWeight()} /> : <Toolbar>
+    {popover === 'style' ? <TypographySlider key="style" label="Nível do texto" value={tools.level}
+      min={0} max={6} describe={(value) => textLevels[value]} onChange={applyStyle} />
+    : popover === 'weight' ? <>
+      <TypographySlider key="weight" label="Peso da fonte" value={tools.weight} min={100} max={900} step={100} onChange={applyWeight} />
+      <Button size="sm" variant="ghost" onMouseDown={(event) => event.preventDefault()} onClick={() => applyWeight()}>Padrão</Button>
+    </> : <Toolbar>
       <Button size="sm" onMouseDown={(event) => event.preventDefault()} onClick={() => setColor()}>Padrão</Button>
       {(popover === 'ink' ? inkColors : highlightColors).map(([name, color]) =>
         <button type="button" key={color} className="note-color-swatch" aria-label={name} title={name}
@@ -396,7 +411,7 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
           .insertContent({ type: 'noteImage', attrs: { image } }).run();
       } catch (error) { notify(error instanceof Error ? error.message : 'Não foi possível inserir a imagem.'); }
     }} />
-    <NotebookToolbar simple={{ history: group(history), text: <>{styleControl}{group(marks.slice(0, 3))}</>,
+    <NotebookToolbar simple={{ history: group(history), text: <>{styleControl}{weightField}{group(marks.slice(0, 3))}</>,
       lists: group(lists), insertIcon: <Plus size={21} /> }} ribbon={ribbon} insertion={insertion} supplemental={supplemental} categories={categories} panel={toolPanel} setPanel={setToolPanel} extra={extra} mobile={mobile}
       clearExtra={() => { setPopover(null); setLink(null); }}
       dismissKeyboard={() => {

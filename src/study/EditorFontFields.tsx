@@ -8,14 +8,14 @@ const weightNames: Record<number, string> = {
   600: 'Seminegrito', 700: 'Negrito', 800: 'Extranegrito', 900: 'Preto', 1000: 'Extra preto',
 };
 
-export function FontSelect({ value, onChange, label = 'Fonte', returnFocus }: {
-  value: string; onChange: (value: string) => void; label?: string; returnFocus?: boolean;
+export function FontSelect({ value, onChange, label = 'Fonte', returnFocus, mixed }: {
+  value: string; onChange: (value: string) => void; label?: string; returnFocus?: boolean; mixed?: boolean;
 }) {
   const known = editorFonts.some(({ name }) => name === value);
   const options: [string, string][] = [['', 'Padrão']];
   if (value && !known) options.push([value, value]);
   options.push(...editorFonts.map(({ name }): [string, string] => [name, name]));
-  return <Select label={label} value={value} options={options} onChange={onChange} returnFocus={returnFocus} />;
+  return <Select label={label} value={mixed ? 'ds-mixed-font' : value} options={options} displayValue={mixed ? 'Misto' : undefined} onChange={onChange} returnFocus={returnFocus} />;
 }
 
 type EditorFont = NonNullable<ReturnType<typeof findEditorFont>>;

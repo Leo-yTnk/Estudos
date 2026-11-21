@@ -6,6 +6,7 @@ import { fromBlocks, noteText } from '../lib/documents';
 import { routeHref } from '../lib/navigation';
 import { useApp } from '../state/AppState';
 import { uid } from '../types';
+import { EditorTypographySettings } from './EditorTypographySettings';
 import { useMobileEditor } from './NotebookToolbar';
 import { SubjectMark } from './Subjects';
 const RichTextEditor = lazy(() => import('./RichTextEditor').then((module) => ({ default: module.RichTextEditor })));
@@ -67,11 +68,10 @@ export function Notebook({ subjectId, noteId, open }: { subjectId: string; noteI
         {pagesOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
       </IconButton>
       <nav className="document-path" aria-label="Navegação do caderno">
-        <a href={directoryHref}><ArrowLeft size={17} aria-hidden="true" />Páginas</a>
-        <span aria-hidden="true">/</span>
-        <input className="document-title" aria-label="Título da página" value={note.title} placeholder="Sem título" maxLength={150}
-          onChange={(event) => app.updateNote(note.id, { title: event.target.value })} />
+        <a href={directoryHref} aria-label="Voltar para páginas"><ArrowLeft size={17} aria-hidden="true" /><span>Páginas</span></a>
       </nav>
+      <input className="document-title" aria-label="Título da página" value={note.title} placeholder="Sem título" maxLength={150}
+        onChange={(event) => app.updateNote(note.id, { title: event.target.value })} />
       <span className="document-autosave" title="Salvamento automático neste dispositivo">
         <HardDrive size={16} aria-hidden="true" /><span className="visually-hidden">Salvamento automático neste dispositivo</span>
       </span>
@@ -101,15 +101,20 @@ export function Notebook({ subjectId, noteId, open }: { subjectId: string; noteI
       </Suspense>
     </div>
     {optionsNoteId === note.id && <ElasticSheet title="Opções da página" onClose={() => setOptionsNoteId(undefined)}>
-      {(dismiss) => <Stack>
-        <Segment label="Modo do editor" value={app.data.profile.toolbarMode} onChange={(toolbarMode) => {
-          app.updateProfile({ toolbarMode });
-          dismiss();
-        }} options={[{ id: 'simple', label: 'Simplificado' }, { id: 'advanced', label: 'Avançado' }]} />
+      <Stack>
+        <section className="document-editor-settings">
+          <h3>Configurações do editor</h3>
+          <div className="field-label">Barra de ferramentas
+            <Segment label="Modo da barra de ferramentas" value={app.data.profile.toolbarMode}
+              onChange={(toolbarMode) => app.updateProfile({ toolbarMode })}
+              options={[{ id: 'simple', label: 'Simplificado' }, { id: 'advanced', label: 'Avançado' }]} />
+          </div>
+          <EditorTypographySettings />
+        </section>
         <div><Button variant="danger" icon={<Trash2 size={16} />} onClick={() => {
           if (window.confirm('Excluir esta página e seu conteúdo?')) { app.removeNote(note.id); open(); }
         }}>Excluir página</Button></div>
-      </Stack>}
+      </Stack>
     </ElasticSheet>}
   </section>;
 }

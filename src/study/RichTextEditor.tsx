@@ -16,14 +16,16 @@ import { Select } from '../components/Select';
 import { documentExtensions, safeLink } from '../lib/documents';
 import { copyNoteSelection, pasteNoteSelection } from '../lib/noteClipboard';
 import { useApp } from '../state/AppState';
-import { editorTypographyVariables, findEditorFont } from '../lib/editorTypography';
+import { editorTextStyles, editorTypographyVariables, editorWeightLabel, findEditorFont } from '../lib/editorTypography';
 import { selectionTypography } from '../lib/selectionTypography';
 import { FontSelect } from './EditorFontFields';
 import { canMoveBlock, moveBlock } from '../lib/editorBlocks';
 import { EditorActionButton, NotebookToolbar, useMobileEditor, type EditorAction, type ToolGroup, type ToolCategory } from './NotebookToolbar';
 
-const textLevels = ['Corpo', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'];
-const styleOptions: [string, string][] = textLevels.map((label, level) => [String(level), label]);
+const styleOptions: [string, string][] = editorTextStyles
+  .filter(([style]) => style === 'p' || /^h[1-6]$/.test(style))
+  .map(([style, label]): [string, string] => [style === 'p' ? '0' : style.slice(1), label])
+  .sort(([a], [b]) => Number(a) - Number(b));
 const weightOptions = [100, 200, 300, 400, 500, 600, 700, 800, 900];
 const inkColors = [['Vinho', '#a52343'], ['Laranja', '#a34e20'], ['Verde', '#237456'], ['Azul', '#315bb1'], ['Roxo', '#7845a9']];
 const highlightColors = [['Amarelo', '#f7e39b'], ['Verde', '#a9ebca'], ['Azul', '#b6d9ff'], ['Violeta', '#dcc7ff'], ['Rosa', '#ffbfd7']];
@@ -250,10 +252,8 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
   }} />;
   const availableWeights = tools.weight === 'Misto' || weightOptions.includes(tools.weight)
     ? weightOptions : [...weightOptions, tools.weight].sort((a, b) => a - b);
-  const weightChoices: [string, string][] = [['', 'Padrão'], ...availableWeights.map((weight): [string, string] => {
-    const value = String(weight);
-    return [value, value];
-  })];
+  const weightChoices: [string, string][] = [['', 'Padrão'], ...availableWeights.map((weight): [string, string] =>
+    [String(weight), editorWeightLabel(weight)])];
   const weightField = <Select label="Peso da fonte" value={String(tools.weight)} options={weightChoices}
     displayValue={tools.weight === 'Misto' ? 'Misto' : undefined} disabled={!tools.canWeight} returnFocus={false}
     onChange={(value) => {

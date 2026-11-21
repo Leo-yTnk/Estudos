@@ -1,8 +1,10 @@
 import { useEffect, useRef, type PointerEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { animate, motion, useMotionValue, useReducedMotion } from 'motion/react';
 import { GripHorizontal, X } from 'lucide-react';
 import { springs, rubberBand } from '../lib/motion';
 import { useApp } from '../state/AppState';
+import { IconButton } from './ui';
 
 interface Drag { id: number; y: number; height: number; lastY: number; lastTime: number; velocity: number; moved: boolean }
 
@@ -41,7 +43,7 @@ export function ElasticSheet({ title, children, onClose }: { title: string; chil
       if (event.key === 'Escape' && !event.defaultPrevented) close();
       if (event.key !== 'Tab') return;
       const controls = Array.from(panel.current?.querySelectorAll<HTMLElement>(
-        'button:not(:disabled), input:not(:disabled):not([type="file"]), select:not(:disabled), textarea:not(:disabled), a[href]',
+        'button:not(:disabled), input:not(:disabled):not([type="file"]), select:not(:disabled), textarea:not(:disabled), a[href], summary',
       ) || []).filter((item) => item.getClientRects().length > 0);
       const first = controls[0];
       const last = controls.at(-1);
@@ -90,7 +92,7 @@ export function ElasticSheet({ title, children, onClose }: { title: string; chil
     to(expanded ? max : min, state.velocity);
   };
 
-  return <div className="sheet-root">
+  return createPortal(<div className="sheet-root">
     <motion.div className="sheet-backdrop" initial={{opacity:0}} animate={{opacity:1}} onClick={close}
       transition={{duration:reduce ? 0 : 0.18}} aria-hidden="true"/>
     <motion.section className="elastic-sheet" role="dialog" aria-modal="true" aria-label={title}
@@ -99,8 +101,8 @@ export function ElasticSheet({ title, children, onClose }: { title: string; chil
         onPointerUp={pointerUp} onPointerCancel={pointerUp} aria-label="Arraste para expandir ou reduzir o painel">
         <GripHorizontal size={26} strokeWidth={1.6} />
       </div>
-      <div className="sheet-head"><h2>{title}</h2><button className="icon-button" type="button" aria-label="Fechar painel" onClick={close}><X size={19}/></button></div>
+      <div className="sheet-head"><h2>{title}</h2><IconButton label="Fechar painel" onClick={close}><X size={19} /></IconButton></div>
       <div className="sheet-scroll">{typeof children === 'function' ? children(close) : children}</div>
     </motion.section>
-  </div>;
+  </div>, document.body);
 }

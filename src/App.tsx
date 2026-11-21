@@ -1,4 +1,3 @@
-import { EditorTypographySettings } from './study/EditorTypographySettings';
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ArrowLeft, Check, CircleHelp, Coffee, Download, Pencil, ShieldCheck, Sparkles, Trash2, Upload, X } from 'lucide-react';
@@ -76,17 +75,6 @@ function Settings() {
       <label className="toggle-row"><span><strong>Reduzir movimento</strong><small>Desativa molas e movimentos não essenciais; a preferência do dispositivo também é respeitada.</small></span>
         <input type="checkbox" checked={data.profile.reducedMotion} onChange={(e) => app.updateProfile({reducedMotion:e.target.checked})}/></label>
     </div>
-    <div className="settings-group"><div className="settings-group-title">Editor</div>
-      <div className="settings-label">Modo da toolbar</div>
-      <div className="settings-options" role="group" aria-label="Modo da toolbar">
-        {(['simple', 'advanced'] as const).map((mode) => <button type="button" key={mode}
-          className={'setting-option ' + (data.profile.toolbarMode === mode ? 'active' : '')}
-          aria-pressed={data.profile.toolbarMode === mode} onClick={() => app.updateProfile({ toolbarMode: mode })}>
-          {mode === 'simple' ? 'Simplificado' : 'Avançado'}{data.profile.toolbarMode === mode && <Check size={15} />}
-        </button>)}
-      </div>
-      <EditorTypographySettings />
-    </div>
     <div className="settings-group"><div className="settings-group-title">Seus dados</div>
       <p className="settings-description"><ShieldCheck size={17}/> Suas informações ficam neste navegador. Nenhum cadastro ou servidor é necessário.</p>
       <div className="settings-buttons"><Button icon={<Download size={16}/>} onClick={download}>Exportar backup</Button>
@@ -131,7 +119,7 @@ function AppContent() {
   const close = () => setSheet(null);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && (!sheet || sheet.kind === 'search')) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && (sheet?.kind === 'search' || (!sheet && !document.querySelector('.sheet-root')))) {
         event.preventDefault();
         setSheet(sheet ? null : { kind: 'search' });
       }

@@ -12,10 +12,40 @@
 .nw-main { width:min(100% - 2 * var(--content-inset), var(--content-width)); margin:0 auto; padding:var(--space-10) 0 var(--space-16); }
 .nw-stack { display:flex; flex-direction:column; gap:16px; min-width:0; }
 .nw-dashboard { gap:24px; }
-.nw-welcome { padding:6px 0 0; }
-.nw-date { display:inline-flex; align-items:center; gap:7px;  color:var(--accent); font-size:12px; font-weight:680; }
-.nw-welcome h1 { font-size:clamp(33px, 5vw, 52px); letter-spacing:var(--letter-title); line-height:1.06; margin:10px 0; overflow-wrap:anywhere; }
-.nw-welcome p { color:var(--secondary); font-size:14px; margin:0; }
+.nw-welcome {
+  --surface-fill: #242a38;
+  --card-edge: rgb(255 255 255 / 21%);
+  --card-stitch: rgb(255 255 255 / 28%);
+  --hero-overlay: linear-gradient(90deg, rgb(12 17 28 / 90%), rgb(12 17 28 / 74%) 44%, rgb(12 17 28 / 10%) 83%);
+  display: grid;
+  align-items: center;
+  isolation: isolate;
+  min-height: clamp(240px, 30vw, 336px);
+  overflow: hidden;
+  padding: clamp(22px, 5vw, 56px);
+  color: #fff;
+}
+.nw-welcome > .nw-welcome-image {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 15%;
+}
+.nw-welcome::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--hero-overlay);
+}
+.nw-welcome-copy { width: min(57%, 510px); }
+.nw-date { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 680; }
+.nw-date svg { flex: none; }
+.nw-welcome h1 { color: inherit; font-size: clamp(32px, 5vw, 54px); letter-spacing: var(--letter-title); line-height: 1.06; margin: 10px 0; overflow-wrap: anywhere; }
+.nw-welcome p { font-size: var(--text-control); margin: 0; max-width: 42ch; }
 .nw-stat { min-height:78px; display:flex; align-items:center; gap:13px; padding:14px 16px; --surface-radius:var(--radius-md); }
 .nw-stat > div { display:grid; gap:3px; }
 .nw-stat strong { font-size:21px; letter-spacing:-.04em; line-height:1; }
@@ -89,6 +119,14 @@
   .nw-focus-rings { right:14px; opacity:1; }
 }
 @media (max-width:800px) {
+  .nw-welcome {
+    --hero-overlay: linear-gradient(0deg, rgb(12 17 28 / 94%), rgb(12 17 28 / 72%) 48%, rgb(12 17 28 / 10%) 90%);
+    align-items: end;
+    min-height: 264px;
+    padding: clamp(19px, 5vw, 32px);
+  }
+  .nw-welcome > .nw-welcome-image { object-position: 74% 18%; }
+  .nw-welcome-copy { width: min(100%, 510px); }
   .nw-main { width:calc(100% - 30px); padding:23px 0 calc(85px + env(safe-area-inset-bottom)); }
   .nw-shell .toast { bottom:calc(65px + env(safe-area-inset-bottom)); }
 }

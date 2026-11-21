@@ -4,12 +4,12 @@ import { Check, ChevronDown } from 'lucide-react';
 
 type SelectOption<T extends string | number> = readonly [value: T, label: string];
 
-export function Select<T extends string | number>({ label, value, options, onChange, displayValue, returnFocus = true }: {
+export function Select<T extends string | number>({ label, value, options, onChange, displayValue, disabled, returnFocus = true }: {
   label: string; value: T; options: readonly SelectOption<T>[];
-  onChange: (value: T) => void; displayValue?: string; returnFocus?: boolean;
+  onChange: (value: T) => void; displayValue?: string; disabled?: boolean; returnFocus?: boolean;
 }) {
   const selected = useRef(false);
-  return <Primitive.Root value={String(value) || 'ds-empty'} onValueChange={(raw) => {
+  return <Primitive.Root disabled={disabled} value={String(value) || 'ds-empty'} onValueChange={(raw) => {
     const option = options.find(([key]) => (String(key) || 'ds-empty') === raw);
     if (option) {
       selected.current = true;

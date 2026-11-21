@@ -77,22 +77,24 @@ export function Notebook({ subjectId, noteId, open }: { subjectId: string; noteI
       </span>
       <IconButton label="Opções da página" aria-haspopup="dialog" onClick={() => setOptionsNoteId(note.id)}><Ellipsis size={22} /></IconButton>
     </header>
-    {mobile && pagesOpen && <div className="document-sidebar-backdrop" aria-hidden="true" onClick={closePages} />}
-    <nav ref={sidebar} id={sidebarId} className="document-sidebar" aria-label="Páginas da matéria" hidden={!pagesOpen}
-      onKeyDown={(event) => { if (event.key === 'Escape') closePages(); }}>
-      <div className="document-sidebar-heading">{subject && <SubjectMark subject={subject} />}
-        <h2>{subject?.title || 'Páginas da matéria'}</h2>
-      </div>
-      <ul>{notes.map((page) => <li key={page.id}>
-        <a href={routeHref({ area: 'materias', subjectId, view: 'caderno', noteId: page.id })}
-          aria-current={page.id === note.id ? 'page' : undefined}
-          onClick={(event) => {
-            if (mobile && !event.defaultPrevented && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) closePages();
-          }}>
-          <FileText size={17} aria-hidden="true" /><span>{page.title || 'Sem título'}</span>
-        </a>
-      </li>)}</ul>
-    </nav>
+    {mobile && <div className="document-sidebar-backdrop" aria-hidden="true" onClick={closePages} />}
+    <div className="document-sidebar-slot">
+      <nav ref={sidebar} id={sidebarId} className="document-sidebar" aria-label="Páginas da matéria" inert={!pagesOpen}
+        onKeyDown={(event) => { if (event.key === 'Escape') closePages(); }}>
+        <div className="document-sidebar-heading">{subject && <SubjectMark subject={subject} />}
+          <h2>{subject?.title || 'Páginas da matéria'}</h2>
+        </div>
+        <ul>{notes.map((page) => <li key={page.id}>
+          <a href={routeHref({ area: 'materias', subjectId, view: 'caderno', noteId: page.id })}
+            aria-current={page.id === note.id ? 'page' : undefined}
+            onClick={(event) => {
+              if (mobile && !event.defaultPrevented && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) closePages();
+            }}>
+            <FileText size={17} aria-hidden="true" /><span>{page.title || 'Sem título'}</span>
+          </a>
+        </li>)}</ul>
+      </nav>
+    </div>
     <div className="document-writing-area" inert={mobile && pagesOpen}>
       <Suspense fallback={<p role="status" className="document-loading nw-muted">Abrindo editor…</p>}>
         <RichTextEditor key={note.id} content={note.content || fromBlocks(note.blocks)} onChange={(content) => app.updateNote(note.id, { content })} />

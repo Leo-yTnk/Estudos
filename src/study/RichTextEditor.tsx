@@ -12,6 +12,7 @@ import { importLocalImage } from '../lib/localImages';
 import { blockViews, collectionIcons, editDocumentBlock } from './collections/DocumentBlocks';
 import { Options } from './collections/Fields';
 import { Button, IconButton, Toolbar } from '../components/ui';
+import { Select } from '../components/Select';
 import { documentExtensions, safeLink } from '../lib/documents';
 import { copyNoteSelection, pasteNoteSelection } from '../lib/noteClipboard';
 import { useApp } from '../state/AppState';
@@ -22,6 +23,8 @@ import { canMoveBlock, moveBlock } from '../lib/editorBlocks';
 import { EditorActionButton, NotebookToolbar, useMobileEditor, type EditorAction, type ToolGroup, type ToolCategory } from './NotebookToolbar';
 
 const textLevels = ['Corpo', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'];
+const styleOptions: [string, string][] = textLevels.map((label, level) => [String(level), label]);
+const weightOptions = [100, 200, 300, 400, 500, 600, 700, 800, 900];
 const inkColors = [['Vinho', '#a52343'], ['Laranja', '#a34e20'], ['Verde', '#237456'], ['Azul', '#315bb1'], ['Roxo', '#7845a9']];
 const highlightColors = [['Amarelo', '#f7e39b'], ['Verde', '#a9ebca'], ['Azul', '#b6d9ff'], ['Violeta', '#dcc7ff'], ['Rosa', '#ffbfd7']];
 
@@ -40,32 +43,12 @@ function selectionBeforeBlur(view: EditorView): Selection {
     ? new TextSelection(anchor, head) : selection;
 }
 
-function TypographySlider({ label, value, min, max, step = 1, describe = String, onChange }: {
-  label: string; value: number | 'Misto'; min: number; max: number; step?: number;
-  describe?: (value: number) => string; onChange: (value: number) => void;
-}) {
-  const thumb = value === 'Misto' ? min : Math.min(max, Math.max(min, Math.round(value / step) * step));
-  const display = value === 'Misto' ? value : describe(value);
-  return <div className="note-typography-slider">
-    <input type="range" aria-label={label} aria-valuetext={display} min={min} max={max} step={step} value={thumb}
-      onChange={(event) => onChange(event.currentTarget.valueAsNumber)}
-      onClick={(event) => { if (value !== thumb) onChange(event.currentTarget.valueAsNumber); }}
-      onKeyDown={(event) => {
-        if (value !== thumb && (event.key === 'Enter' || event.key === ' ')) {
-          event.preventDefault();
-          onChange(thumb);
-        }
-      }} />
-    <output>{display}</output>
-  </div>;
-}
-
 export function RichTextEditor({ content, onChange }: { content: JSONContent; onChange: (content: JSONContent) => void }) {
   const [toolPanel, setToolPanel] = useState<string | null>(null);
   const [link, setLink] = useState<string | null>(null);
   const [invalidLink, setInvalidLink] = useState(false);
   const [sizeDraft, setSizeDraft] = useState<string | null>(null);
-  const [popover, setPopover] = useState<'ink' | 'highlight' | 'weight' | 'style' | null>(null);
+  const [popover, setPopover] = useState<'ink' | 'highlight' | null>(null);
   const { notify, data } = useApp();
   const fileInput = useRef<HTMLInputElement>(null);
   const blurredSelection = useRef<{ doc: PMNode; selection: Selection }>(null);
@@ -248,22 +231,16 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
     { label: 'Copiar', icon: <Copy size={17} />, disabled: !tools.selected, run: () => copy(false) },
     { label: 'Recortar', icon: <Scissors size={17} />, disabled: !tools.selected, run: () => copy(true) },
   ];
-  const keepSelection = () => {
-    blurredSelection.current = { doc: editor.state.doc, selection: editor.state.selection };
-  };
-  const applyStyle = (value: number) => {
-    if (tools.level === value) return;
-    const level = value as 0 | 1 | 2 | 3 | 4 | 5 | 6;
-    const chain = selectionChain();
-    if (level === 0) chain.setParagraph().run();
-    else chain.setHeading({ level }).run();
-    keepSelection();
-  };
-  const styleControl = <Button size="sm" variant="ghost" className="note-format-trigger"
-    aria-label={`Estilo: ${tools.level === 'Misto' ? tools.level : textLevels[tools.level]}`} disabled={!tools.canStyle}
-    aria-expanded={popover === 'style'} onMouseDown={(event) => event.preventDefault()} onClick={() => toggle('style')}>
-    {tools.level === 'Misto' ? tools.level : textLevels[tools.level]}
-  </Button>;
+  const styleControl = <Select label="Estilo" value={String(tools.level)} options={styleOptions}
+    displayValue={tools.level === 'Misto' ? 'Misto' : undefined} disabled={!tools.canStyle} returnFocus={false}
+    onChange={(value) => {
+      const level = Number(value) as 0 | 1 | 2 | 3 | 4 | 5 | 6;
+      setPopover(null);
+      setLink(null);
+      const chain = focus();
+      if (level === 0) chain.setParagraph().run();
+      else chain.setHeading({ level }).run();
+    }} />;
   const fontFamily = tools.fontFamily === 'Misto' ? '' : tools.fontFamily ?? '';
   const inlineFont = findEditorFont(fontFamily);
   const fontSelect = <FontSelect returnFocus={false} value={inlineFont?.name ?? fontFamily} mixed={tools.fontFamily === 'Misto'} onChange={(name) => {
@@ -271,18 +248,21 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
     const chain = focus();
     (font ? chain.setFontFamily(font.family) : chain.unsetFontFamily()).run();
   }} />;
-  const applyWeight = (weight?: number) => {
-    if (weight !== undefined && tools.weight === weight && !tools.bold) return;
-    const chain = selectionChain();
-    if (weight !== undefined) chain.unsetBold();
-    chain.setMark('textStyle', { fontWeight: weight ?? null }).removeEmptyTextStyle().run();
-    keepSelection();
-  };
-  const weightField = <Button size="sm" variant="ghost" className="note-format-trigger"
-    aria-label={`Peso da fonte: ${tools.weight}`} disabled={!tools.canWeight}
-    aria-expanded={popover === 'weight'} onMouseDown={(event) => event.preventDefault()} onClick={() => toggle('weight')}>
-    {tools.weight}
-  </Button>;
+  const availableWeights = tools.weight === 'Misto' || weightOptions.includes(tools.weight)
+    ? weightOptions : [...weightOptions, tools.weight].sort((a, b) => a - b);
+  const weightChoices: [string, string][] = [['', 'Padrão'], ...availableWeights.map((weight): [string, string] => {
+    const value = String(weight);
+    return [value, value];
+  })];
+  const weightField = <Select label="Peso da fonte" value={String(tools.weight)} options={weightChoices}
+    displayValue={tools.weight === 'Misto' ? 'Misto' : undefined} disabled={!tools.canWeight} returnFocus={false}
+    onChange={(value) => {
+      setPopover(null);
+      setLink(null);
+      const chain = focus();
+      if (value) chain.unsetBold();
+      chain.setMark('textStyle', { fontWeight: value ? Number(value) : null }).removeEmptyTextStyle().run();
+    }} />;
   const mixedSize = tools.fontSize === 'Misto';
   const activeSize = mixedSize ? '' : String(tools.fontSize ?? '').replace(/px$/, '');
   const applySize = (refocus: boolean) => {
@@ -372,8 +352,7 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
       <div>{group([...lists.slice(0, 2), ...blocks.slice(0, 2)])}</div>
     </div>
   </>;
-  const title = popover === 'ink' ? 'Cor do texto' : popover === 'highlight'
-    ? 'Cor de fundo' : popover === 'style' ? 'Estilo' : 'Peso da fonte';
+  const title = popover === 'ink' ? 'Cor do texto' : 'Cor de fundo';
   const setColor = (color?: string) => {
     setPopover(null);
     const chain = focus();
@@ -383,18 +362,13 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
   const extra = linkForm || (popover && <section className="note-ribbon-panel" aria-label={title}>
     <div className="nw-section-heading"><strong>{title}</strong>
       <IconButton label="Fechar opções" onClick={() => { setPopover(null); focus().run(); }}>×</IconButton></div>
-    {popover === 'style' ? <TypographySlider key="style" label="Nível do texto" value={tools.level}
-      min={0} max={6} describe={(value) => textLevels[value]} onChange={applyStyle} />
-    : popover === 'weight' ? <>
-      <TypographySlider key="weight" label="Peso da fonte" value={tools.weight} min={100} max={900} step={100} onChange={applyWeight} />
-      <Button size="sm" variant="ghost" onMouseDown={(event) => event.preventDefault()} onClick={() => applyWeight()}>Padrão</Button>
-    </> : <Toolbar>
+    <Toolbar>
       <Button size="sm" onMouseDown={(event) => event.preventDefault()} onClick={() => setColor()}>Padrão</Button>
       {(popover === 'ink' ? inkColors : highlightColors).map(([name, color]) =>
         <button type="button" key={color} className="note-color-swatch" aria-label={name} title={name}
           aria-pressed={color === (popover === 'ink' ? tools.textStyle.color : tools.highlightColor)}
           style={{ backgroundColor: color }} onMouseDown={(event) => event.preventDefault()} onClick={() => setColor(color)} />)}
-    </Toolbar>}
+    </Toolbar>
   </section>);
   return <div className="document-editor">
     <input type="file" hidden ref={fileInput} aria-label="Arquivo de imagem do caderno" accept="image/*" onChange={async (event) => {

@@ -81,8 +81,9 @@ export function NotebookToolbar({ simple, ribbon, insertion, supplemental, categ
   const { toolbarMode, reducedMotion } = data.profile;
   const advanced = toolbarMode === 'advanced';
   const animate = !reduced && !reducedMotion;
-  const selected = categories.find(({ id }) => id === (advanced ? panel : simpleCategory)) ?? categories[0];
-  const open = !!extra || panel === 'more' || panel === 'text' || panel === 'lists' || (advanced && panel === 'context' && selected.id === 'context');
+  const context = categories.find(({ id }) => id === 'context');
+  const selected = categories.find(({ id }) => id === (advanced || panel === 'context' ? panel : simpleCategory)) ?? categories[0];
+  const open = !!extra || panel === 'more' || panel === 'text' || panel === 'lists' || (panel === 'context' && !!context);
   const extraRef = useRef(clearExtra);
   extraRef.current = clearExtra;
 
@@ -134,7 +135,7 @@ export function NotebookToolbar({ simple, ribbon, insertion, supplemental, categ
   const formatPanel = panel === 'text' || panel === 'lists'
     ? <div className="note-tool-row">{panel === 'text' ? simple.text : simple.lists}</div>
     : <>
-      {!advanced && <div className="note-category-row" role="group" aria-label="Categorias de ferramentas">
+      {!advanced && panel !== 'context' && <div className="note-category-row" role="group" aria-label="Categorias de ferramentas">
         {categories.map(({ id, label }) => <Button key={id} variant="ghost" size="sm" aria-pressed={id === selected.id}
           onMouseDown={(event) => event.preventDefault()} onClick={() => setSimpleCategory(id)}>{label}</Button>)}
       </div>}
@@ -153,7 +154,7 @@ export function NotebookToolbar({ simple, ribbon, insertion, supplemental, categ
         <div className="note-history-group" role="group" aria-label="Histórico">{simple.history}</div>
         {ribbon}{insertion}
         <div className="note-ribbon-extra" role="group" aria-label="Mais ferramentas">
-          {more}{categories.filter(({ id }) => id === 'context').map(categoryButton)}
+          {more}{context && categoryButton(context)}
         </div>
       </div> : panel === 'insert' ? <div className="note-simple-insertion">{insert}{insertion}</div>
       : <div className="note-command-scroll">
@@ -166,7 +167,10 @@ export function NotebookToolbar({ simple, ribbon, insertion, supplemental, categ
           <div className="note-command-group">{simple.text}</div>
           <div className="note-command-group">{simple.lists}</div>
         </>}
-        <div className="note-command-group">{insert}{more}</div>
+        <div className="note-command-group">{insert}{more}{context &&
+          <IconButton label={context.label} aria-expanded={panel === 'context' && open} onMouseDown={(event) => event.preventDefault()}
+            onClick={(event) => togglePanel('context', event.currentTarget)}>{context.icon}</IconButton>}
+        </div>
       </div>}
       {mobile && inset > 0 && <IconButton label="Recolher teclado" onMouseDown={(event) => event.preventDefault()}
         onClick={dismissKeyboard}><KeyboardOff size={18} /></IconButton>}

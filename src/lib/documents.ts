@@ -7,6 +7,7 @@ import TextAlign from '@tiptap/extension-text-align';
 import { TextStyleKit } from '@tiptap/extension-text-style';
 import StarterKit from '@tiptap/starter-kit';
 import { CollectionBlock, NoteImage, collectionText, localImage, readCollection } from './collections';
+import { tableFormulaPreview } from './tableFormulaPreview';
 import type { NoteBlock, StudyNote } from '../types';
 
 export function safeLink(value: string) {
@@ -87,6 +88,7 @@ export const documentExtensions = [
   }),
   editorTextInput, textWeight,
   TableKit.configure({ table: { renderWrapper: true } }),
+  tableFormulaPreview,
   Highlight.configure({ multicolor: true }),
   TextStyleKit.configure({ backgroundColor: false }),
   paragraphIndent,

@@ -1,6 +1,6 @@
 import { useRef, useState, type CSSProperties } from 'react';
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
-import { AlignCenter, AlignJustify, AlignLeft, AlignRight, ArrowDown, ArrowUp, Bold, Clipboard, Code2, Copy, Eraser, Highlighter, IndentDecrease, IndentIncrease,
+import { AlignCenter, AlignJustify, AlignLeft, AlignRight, ArrowDown, ArrowLeft, ArrowUp, Bold, Clipboard, Code2, Columns2, Copy, Eraser, Highlighter, IndentDecrease, IndentIncrease, Merge, Rows2, Split,
   ImagePlus, Italic, LayoutGrid, Link2, List, ListChecks, ListOrdered, Minus, Plus, Quote, Redo2, Scissors, SlidersHorizontal, Strikethrough, Subscript, Superscript, Table2, Trash2, Underline, Undo2, Type } from 'lucide-react';
 import type { JSONContent } from '@tiptap/core';
 import { NodeSelection, TextSelection, type Selection } from '@tiptap/pm/state';
@@ -100,7 +100,9 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
         quote: editor.isActive('blockquote'), code: editor.isActive('codeBlock'), link: editor.isActive('link'),
         selected: !editor.state.selection.empty, table: editor.isActive('table'),
         canAddRow: editor.can().addRowAfter(), canAddColumn: editor.can().addColumnAfter(),
+        canAddRowBefore: editor.can().addRowBefore(), canAddColumnBefore: editor.can().addColumnBefore(),
         canDeleteRow: editor.can().deleteRow(), canDeleteColumn: editor.can().deleteColumn(),
+        canMergeCells: editor.can().mergeCells(), canSplitCell: editor.can().splitCell(),
         canAlign: editor.isActive('paragraph') || editor.isActive('heading'),
         canUndo: editor.can().undo(), canRedo: editor.can().redo(), listItem,
         canIndent: list ? editor.can().sinkListItem(listItem) : indent < 6,
@@ -192,7 +194,9 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
     { label: 'Mover bloco para baixo', icon: <ArrowDown size={18} />, disabled: !tools.canMoveDown, run: () => reorder(1) },
   ];
   const table: EditorAction[] = [
+    { label: 'Adicionar linha acima', icon: <span className="note-table-icon">L<ArrowUp size={11} /></span>, disabled: !tools.canAddRowBefore, run: () => focus().addRowBefore().run() },
     { label: 'Adicionar linha abaixo', icon: <span className="note-table-icon">L<Plus size={11} /></span>, disabled: !tools.canAddRow, run: () => focus().addRowAfter().run() },
+    { label: 'Adicionar coluna à esquerda', icon: <span className="note-table-icon">C<ArrowLeft size={11} /></span>, disabled: !tools.canAddColumnBefore, run: () => focus().addColumnBefore().run() },
     { label: 'Adicionar coluna à direita', icon: <span className="note-table-icon">C<Plus size={11} /></span>, disabled: !tools.canAddColumn, run: () => focus().addColumnAfter().run() },
     { label: 'Excluir linha atual', icon: <span className="note-table-icon">L<Minus size={11} /></span>, disabled: !tools.canDeleteRow, run: () => focus().deleteRow().run() },
     { label: 'Excluir coluna atual', icon: <span className="note-table-icon">C<Minus size={11} /></span>, disabled: !tools.canDeleteColumn, run: () => focus().deleteColumn().run() },
@@ -319,7 +323,21 @@ export function RichTextEditor({ content, onChange }: { content: JSONContent; on
   const insertion = <div className="note-ribbon-insertion" role="group" aria-label="Inserir">
     <div className="note-insert-actions">{group([insertImage, insertTable, linkAction, ...insertSets, quote, code, separator])}</div>
   </div>;
-  const context: ToolGroup[] = tools.table ? [{ label: 'Linhas e colunas', rows: [group(table)] }]
+  const cellActions: EditorAction[] = [
+    { label: 'Alternar cabeçalho da primeira linha', icon: <Rows2 size={18} />, run: () => focus().toggleHeaderRow().run() },
+    { label: 'Alternar cabeçalho da primeira coluna', icon: <Columns2 size={18} />, run: () => focus().toggleHeaderColumn().run() },
+    { label: 'Mesclar células selecionadas', icon: <Merge size={18} />, disabled: !tools.canMergeCells, run: () => focus().mergeCells().run() },
+    { label: 'Dividir célula mesclada', icon: <Split size={18} />, disabled: !tools.canSplitCell, run: () => focus().splitCell().run() },
+  ];
+  const context: ToolGroup[] = tools.table ? [
+    { label: 'Linhas e colunas', rows: [group(table)] },
+    { label: 'Cabeçalhos e células', rows: [group(cellActions)] },
+    { label: 'Fórmulas', rows: [<div className="note-formula-help">
+      <p>Digite <code>=</code> e a fórmula em uma célula. As colunas começam em A e as linhas em 1, incluindo o cabeçalho.</p>
+      <p><code>=SOMA(A2:A5)</code>, <code>=MÉDIA(B2:B5)</code> ou <code>=A2*B2</code>. Separe argumentos com <code>;</code> e escreva decimais com vírgula.</p>
+      <p>Também aceita <code>MÍNIMO</code>, <code>MÁXIMO</code>, <code>CONT.NÚM</code>, parênteses e porcentagens.</p>
+    </div>] },
+  ]
     : contextualBlock ? [{ label: 'Elemento selecionado', rows: [group([propertyAction, ...blocks.slice(2)])] }] : [];
   const supplemental: ToolGroup[] = [
     { label: 'Formatação', rows: [group([lists[2]]), lineHeight] },

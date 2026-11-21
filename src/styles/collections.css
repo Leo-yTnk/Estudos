@@ -30,22 +30,12 @@
 @container card-region (max-width: 480px) { .collection-card-grid { --available-columns: 2; } }
 @container card-region (max-width: 310px) { .collection-card-grid { --available-columns: 1; } }
 .collection-card {
-  position: relative;
+  --surface-radius: var(--radius-md);
+  --surface-fill: var(--surface-soft);
   min-width: 0;
   min-height: 84px;
-  border: var(--card-edge-width) solid var(--card-edge);
-  border-radius: var(--radius-md);
-  background: var(--surface-soft);
   overflow: hidden;
   user-select: none;
-}
-.collection-card::before {
-  content: '';
-  position: absolute;
-  inset: 4px;
-  border-radius: calc(var(--radius-md) - 6px);
-  border: var(--card-stitch-width) dashed var(--card-stitch);
-  pointer-events: none;
 }
 .collection-cards-editor { display: grid; gap: var(--space-3); min-width: 0; }
 .collection-card-content { display: grid; gap: var(--space-3); padding: var(--space-4); overflow-wrap: anywhere; }

@@ -40,7 +40,7 @@ export function EntryCard({ entry, initiallyExpanded = false }: { entry: Entry; 
   const subject = app.data.subjects.find((item) => item.id === entry.subjectId);
   const tone = entry.kind === 'worry' ? 'amber' : entry.kind === 'idea' ? 'purple' : entry.kind === 'task' ? 'teal' : 'neutral';
 
-  return <motion.article layout={!reduce} transition={springs.layout} className={'entry-card ' + (expanded ? 'is-expanded ' : '') + (entry.status !== 'active' ? 'is-dimmed' : '')}>
+  return <motion.article layout={!reduce} transition={springs.layout} className={'surface entry-card ' + (expanded ? 'is-expanded ' : '') + (entry.status !== 'active' ? 'is-dimmed' : '')}>
     <button className="entry-summary" type="button" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
       <div className="entry-main"><div className="entry-tags"><KindPill tone={tone}>{KINDS[entry.kind]}</KindPill>
         {subject && <span className="nw-tag subject-tone" style={subjectTone(subject.color)}>{subject.title}</span>}
